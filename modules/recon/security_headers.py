@@ -14,9 +14,9 @@ import re
 from typing import Any, Dict, Final, List, Optional, Pattern, Tuple
 from urllib.parse import urlparse
 
-from config import SECURITY_HEADERS_EXPECTED
 from models import IngestedPage, SecurityFinding
 from modules.logging_setup import get_logger
+from modules.recon import knowledge_loader as kb
 
 log = get_logger("recon.security")
 
@@ -91,7 +91,7 @@ def _transport(page: IngestedPage) -> List[SecurityFinding]:
 def _missing_headers(h: Dict[str, str]) -> List[SecurityFinding]:
     """Check every expected security header is actually present."""
     out: List[SecurityFinding] = []
-    for name, severity, detail in SECURITY_HEADERS_EXPECTED:
+    for _rule_id, name, severity, detail in kb.load_security_headers_expected():
         if not h.get(name, "").strip():
             out.append(SecurityFinding(category="missing_header", detail=detail,
                                         severity=severity, evidence=name))

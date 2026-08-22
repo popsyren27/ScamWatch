@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "knowledge_version": "2026.08.22.1",
+  "misconfig_targets": [
+    { "id": "misc.git-config", "path": "/.git/config", "category": "source_control", "severity": "high" },
+    { "id": "misc.git-head", "path": "/.git/HEAD", "category": "source_control", "severity": "high" },
+    { "id": "misc.git-index", "path": "/.git/index", "category": "source_control", "severity": "high" },
+    { "id": "misc.git-logs-head", "path": "/.git/logs/HEAD", "category": "source_control", "severity": "high" },
+    { "id": "misc.svn-entries", "path": "/.svn/entries", "category": "source_control", "severity": "high" },
+    { "id": "misc.svn-wcdb", "path": "/.svn/wc.db", "category": "source_control", "severity": "high" },
+    { "id": "misc.hg-manifest", "path": "/.hg/store/00manifest.i", "category": "source_control", "severity": "high" },
+    { "id": "misc.bzr-branchconf", "path": "/.bzr/branch/branch.conf", "category": "source_control", "severity": "medium" },
+    { "id": "misc.env", "path": "/.env", "category": "secrets", "severity": "critical" },
+    { "id": "misc.env-local", "path": "/.env.local", "category": "secrets", "severity": "critical" },
+    { "id": "misc.env-production", "path": "/.env.production", "category": "secrets", "severity": "critical" },
+    { "id": "misc.env-bak", "path": "/.env.bak", "category": "secrets", "severity": "critical" },
+    { "id": "misc.aws-credentials", "path": "/.aws/credentials", "category": "secrets", "severity": "critical" },
+    { "id": "misc.htpasswd", "path": "/.htpasswd", "category": "secrets", "severity": "high" },
+    { "id": "misc.netrc", "path": "/.netrc", "category": "secrets", "severity": "high" },
+    { "id": "misc.npmrc", "path": "/.npmrc", "category": "secrets", "severity": "medium" },
+    { "id": "misc.secrets-json", "path": "/secrets.json", "category": "secrets", "severity": "high" },
+    { "id": "misc.credentials-json", "path": "/credentials.json", "category": "secrets", "severity": "high" },
+    { "id": "misc.backup-sql", "path": "/backup.sql", "category": "backup", "severity": "high" },
+    { "id": "misc.database-sql", "path": "/database.sql", "category": "backup", "severity": "high" },
+    { "id": "misc.dump-sql", "path": "/dump.sql", "category": "backup", "severity": "high" },
+    { "id": "misc.backup-zip", "path": "/backup.zip", "category": "backup", "severity": "high" },
+    { "id": "misc.site-targz", "path": "/site.tar.gz", "category": "backup", "severity": "high" },
+    { "id": "misc.config-php-bak", "path": "/config.php.bak", "category": "backup", "severity": "high" },
+    { "id": "misc.wpconfig-bak", "path": "/wp-config.php.bak", "category": "backup", "severity": "critical" },
+    { "id": "misc.ds-store", "path": "/.DS_Store", "category": "backup", "severity": "low" },
+    { "id": "misc.config-json", "path": "/config.json", "category": "config", "severity": "medium" },
+    { "id": "misc.composer-json", "path": "/composer.json", "category": "config", "severity": "low" },
+    { "id": "misc.composer-lock", "path": "/composer.lock", "category": "config", "severity": "low" },
+    { "id": "misc.package-json", "path": "/package.json", "category": "config", "severity": "low" },
+    { "id": "misc.web-config", "path": "/web.config", "category": "config", "severity": "medium" },
+    { "id": "misc.wpconfig-php", "path": "/wp-config.php", "category": "config", "severity": "medium" },
+    { "id": "misc.laravel-log", "path": "/storage/logs/laravel.log", "category": "logs", "severity": "high" },
+    { "id": "misc.phpinfo", "path": "/phpinfo.php", "category": "info_disclosure", "severity": "high" },
+    { "id": "misc.info-php", "path": "/info.php", "category": "info_disclosure", "severity": "high" },
+    { "id": "misc.server-status", "path": "/server-status", "category": "info_disclosure", "severity": "medium" },
+    { "id": "misc.server-info", "path": "/server-info", "category": "info_disclosure", "severity": "medium" },
+    { "id": "misc.actuator-health", "path": "/actuator/health", "category": "info_disclosure", "severity": "medium" },
+    { "id": "misc.actuator-env", "path": "/actuator/env", "category": "info_disclosure", "severity": "high" },
+    { "id": "misc.debug", "path": "/debug", "category": "info_disclosure", "severity": "medium" },
+    { "id": "misc.adminer", "path": "/adminer.php", "category": "admin", "severity": "medium" },
+    { "id": "misc.phpmyadmin", "path": "/phpmyadmin/", "category": "admin", "severity": "medium" }
+  ],
+  "security_headers_expected": [
+    {
+      "id": "sh.csp", "header_name": "content-security-policy", "severity_if_missing": "medium",
+      "explanation": "No Content-Security-Policy — nothing constrains injected scripts or framing."
+    },
+    {
+      "id": "sh.hsts", "header_name": "strict-transport-security", "severity_if_missing": "medium",
+      "explanation": "No HSTS — connections can be silently downgraded to plaintext HTTP (MITM)."
+    },
+    {
+      "id": "sh.xfo", "header_name": "x-frame-options", "severity_if_missing": "low",
+      "explanation": "No X-Frame-Options — the page can be framed for clickjacking."
+    },
+    {
+      "id": "sh.xcto", "header_name": "x-content-type-options", "severity_if_missing": "low",
+      "explanation": "No 'X-Content-Type-Options: nosniff' — MIME-sniffing attacks are possible."
+    },
+    {
+      "id": "sh.referrer-policy", "header_name": "referrer-policy", "severity_if_missing": "info",
+      "explanation": "No Referrer-Policy — full URLs may leak to third-party destinations."
+    },
+    {
+      "id": "sh.permissions-policy", "header_name": "permissions-policy", "severity_if_missing": "info",
+      "explanation": "No Permissions-Policy — powerful browser features are left unrestricted."
+    }
+  ]
+}

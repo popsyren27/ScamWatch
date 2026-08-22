@@ -8,8 +8,6 @@ TODO:
 - Consider splitting local dev overrides into a `config_local.py` ignored by VCS.
 """
 
-from __future__ import annotations
-
 from typing import Dict, Final, Tuple
 
 # --------------------------------------------------------------------------
@@ -65,67 +63,10 @@ NVD_API_BASE: Final[str] = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 NVD_API_KEY: Final[str] = ""
 NVD_MAX_CVES_PER_PRODUCT: Final[int] = 10
 
-# Paths probed for misconfiguration — only HTTP status is read, bodies are
-# never downloaded or parsed. Each target is (path, category, severity);
-# severity feeds the risk score, category groups the finding in the report.
-MISCONFIG_TARGETS: Final[Tuple[Tuple[str, str, str], ...]] = (
-    # --- Source-control exposure (frequently leaks full source + secrets) ---
-    ("/.git/config", "source_control", "high"),
-    ("/.git/HEAD", "source_control", "high"),
-    ("/.git/index", "source_control", "high"),
-    ("/.git/logs/HEAD", "source_control", "high"),
-    ("/.svn/entries", "source_control", "high"),
-    ("/.svn/wc.db", "source_control", "high"),
-    ("/.hg/store/00manifest.i", "source_control", "high"),
-    ("/.bzr/branch/branch.conf", "source_control", "medium"),
-    # --- Secrets / environment files ---
-    ("/.env", "secrets", "critical"),
-    ("/.env.local", "secrets", "critical"),
-    ("/.env.production", "secrets", "critical"),
-    ("/.env.bak", "secrets", "critical"),
-    ("/.aws/credentials", "secrets", "critical"),
-    ("/.htpasswd", "secrets", "high"),
-    ("/.netrc", "secrets", "high"),
-    ("/.npmrc", "secrets", "medium"),
-    ("/secrets.json", "secrets", "high"),
-    ("/credentials.json", "secrets", "high"),
-    # --- Backups / database dumps ---
-    ("/backup.sql", "backup", "high"),
-    ("/database.sql", "backup", "high"),
-    ("/dump.sql", "backup", "high"),
-    ("/backup.zip", "backup", "high"),
-    ("/site.tar.gz", "backup", "high"),
-    ("/config.php.bak", "backup", "high"),
-    ("/wp-config.php.bak", "backup", "critical"),
-    ("/.DS_Store", "backup", "low"),
-    # --- Framework / application config & logs ---
-    ("/config.json", "config", "medium"),
-    ("/composer.json", "config", "low"),
-    ("/composer.lock", "config", "low"),
-    ("/package.json", "config", "low"),
-    ("/web.config", "config", "medium"),
-    ("/wp-config.php", "config", "medium"),
-    ("/storage/logs/laravel.log", "logs", "high"),
-    # --- Debug / information-disclosure endpoints ---
-    ("/phpinfo.php", "info_disclosure", "high"),
-    ("/info.php", "info_disclosure", "high"),
-    ("/server-status", "info_disclosure", "medium"),
-    ("/server-info", "info_disclosure", "medium"),
-    ("/actuator/health", "info_disclosure", "medium"),
-    ("/actuator/env", "info_disclosure", "high"),
-    ("/debug", "info_disclosure", "medium"),
-    # --- Exposed admin surfaces ---
-    ("/adminer.php", "admin", "medium"),
-    ("/phpmyadmin/", "admin", "medium"),
-)
-
-# Backward-compatible flat path tuple, derived from the structured targets.
-MISCONFIG_PATHS: Final[Tuple[str, ...]] = tuple(t[0] for t in MISCONFIG_TARGETS)
-
-# Map of path -> (category, severity) for O(1) enrichment of a probe result.
-MISCONFIG_META: Final[Dict[str, Tuple[str, str]]] = {
-    path: (category, severity) for path, category, severity in MISCONFIG_TARGETS
-}
+# Misconfiguration probe targets and expected security headers are KNOWLEDGE,
+# not configuration — they live in modules/recon/knowledge/posture_targets.json
+# (see knowledge_loader.load_misconfig_targets / load_security_headers_expected).
+# This file holds only operational knobs: timeouts, ports, thresholds, caps.
 
 # --- Soft-404 / catch-all baseline guard ----------------------------------
 # Many sites (SPAs, parked domains, soft-404 handlers) answer HTTP 200 to ANY
@@ -135,27 +76,6 @@ MISCONFIG_META: Final[Dict[str, Tuple[str, str]]] = {
 CATCHALL_PROBE_PATHS: Final[Tuple[str, ...]] = (
     "/threatrecon-baseline-9f3a2b7c1e.nonexistent",
     "/__does_not_exist__/a8d4f60b.html",
-)
-
-# --------------------------------------------------------------------------
-# Phase 3 — Passive web-security posture audit
-# --------------------------------------------------------------------------
-# Response headers a well-configured site is expected to send. A missing header
-# is recorded as a (defensive) finding and contributes to the risk score. Each
-# entry: (header_name_lowercase, severity_if_missing, human_explanation).
-SECURITY_HEADERS_EXPECTED: Final[Tuple[Tuple[str, str, str], ...]] = (
-    ("content-security-policy", "medium",
-     "No Content-Security-Policy — nothing constrains injected scripts or framing."),
-    ("strict-transport-security", "medium",
-     "No HSTS — connections can be silently downgraded to plaintext HTTP (MITM)."),
-    ("x-frame-options", "low",
-     "No X-Frame-Options — the page can be framed for clickjacking."),
-    ("x-content-type-options", "low",
-     "No 'X-Content-Type-Options: nosniff' — MIME-sniffing attacks are possible."),
-    ("referrer-policy", "info",
-     "No Referrer-Policy — full URLs may leak to third-party destinations."),
-    ("permissions-policy", "info",
-     "No Permissions-Policy — powerful browser features are left unrestricted."),
 )
 
 # --------------------------------------------------------------------------

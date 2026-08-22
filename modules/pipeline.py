@@ -26,6 +26,7 @@ from modules.logging_setup import get_logger
 from modules.proxy.tor_manager import (
     AnonymityError, acquire_anonymous_identity, local_identity,
 )
+from modules.recon import knowledge_loader as kb
 from modules.recon.cve import cross_reference_cves
 from modules.recon.heuristics import analyze_heuristics
 from modules.recon.intel import gather_intel
@@ -77,7 +78,8 @@ async def run_scan(target_url: StrictStr, status_hook: StatusHook = None,
     refused, so the anonymity guarantee can never be silently disabled against a
     real remote site.
     """
-    report = ScanReport(target_url=target_url, timestamp_utc=_utc_now_iso())
+    report = ScanReport(target_url=target_url, timestamp_utc=_utc_now_iso(),
+                        knowledge_version=kb.get_knowledge_version())
     local = is_loopback(target_url)
 
     if direct and not local:

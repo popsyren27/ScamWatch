@@ -1,29 +1,66 @@
 {
+  "schema_version": 1,
+  "knowledge_version": "2026.08.22.1",
   "entries": [
     {
       "label": "eval(atob(...)) base64 execution",
       "pattern": "eval\\s*\\(\\s*atob\\s*\\(",
-      "ignore_case": true
+      "ignore_case": true,
+      "id": "obf.eval-atob-base64-execution",
+      "version": 1,
+      "source": "curated",
+      "confidence": 0.7,
+      "enabled": true,
+      "created": "2026-08-22",
+      "updated": "2026-08-22"
     },
     {
       "label": "eval(unescape(...)) execution",
       "pattern": "eval\\s*\\(\\s*unescape\\s*\\(",
-      "ignore_case": true
+      "ignore_case": true,
+      "id": "obf.eval-unescape-execution",
+      "version": 1,
+      "source": "curated",
+      "confidence": 0.7,
+      "enabled": true,
+      "created": "2026-08-22",
+      "updated": "2026-08-22"
     },
     {
       "label": "String.fromCharCode payload chain",
       "pattern": "(?:String\\.)?fromCharCode\\s*\\((?:\\s*\\d+\\s*,){8,}",
-      "ignore_case": true
+      "ignore_case": true,
+      "id": "obf.string-fromcharcode-payload-chain",
+      "version": 1,
+      "source": "curated",
+      "confidence": 0.7,
+      "enabled": true,
+      "created": "2026-08-22",
+      "updated": "2026-08-22"
     },
     {
       "label": "document.write of dynamic markup",
       "pattern": "document\\.write\\s*\\(",
-      "ignore_case": true
+      "ignore_case": true,
+      "id": "obf.document-write-of-dynamic-markup",
+      "version": 1,
+      "source": "curated",
+      "confidence": 0.7,
+      "enabled": true,
+      "created": "2026-08-22",
+      "updated": "2026-08-22"
     },
     {
       "label": "packed/minified eval loader",
       "pattern": "eval\\(function\\(p,a,c,k,e",
-      "ignore_case": true
+      "ignore_case": true,
+      "id": "obf.packed-minified-eval-loader",
+      "version": 1,
+      "source": "curated",
+      "confidence": 0.7,
+      "enabled": true,
+      "created": "2026-08-22",
+      "updated": "2026-08-22"
     }
   ]
 }

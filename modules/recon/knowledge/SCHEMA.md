@@ -11,18 +11,66 @@ yourself (the loader does it), but for regex `pattern` strings you may set
 
 ---
 
+## Rule envelope (all scored rules)
+
+Every entry in `lexicon.json`, `regex_detectors.json`,
+`obfuscation_patterns.json`, `tech_signatures.json` and
+`posture_targets.json` carries an identity envelope, validated on load by
+pydantic models in `knowledge_schema.py` (unknown fields are rejected,
+duplicate ids are rejected, malformed entries raise with file + index):
+
+```jsonc
+{
+  "id": "lex.double-your-money", // REQUIRED, unique within the file
+  "version": 1,                  // rule revision, bump when meaning changes
+  "source": "curated",           // where the rule came from
+  "confidence": 0.85,            // 0.0-1.0 analyst confidence
+  "enabled": true,               // false = rule never fires
+  "created": "2026-08-22",
+  "updated": "2026-08-22"
+}
+```
+
+Every fired `HeuristicHit` / `TechFingerprint` records the `rule_id` that
+produced it, so per-rule performance can be measured later.
+
+## File wrapper
+
+Scored files are wrapped as:
+
+```jsonc
+{
+  "schema_version": 1,
+  "knowledge_version": "2026.08.22.1",  // bump on any content change
+  "entries": [ ... ]
+}
+```
+
+`get_knowledge_version()` joins the per-file versions and the aggregate is
+stamped onto every `ScanReport.knowledge_version` so an old verdict can be
+reproduced/explained after the knowledge base evolves.
+
+`reference.json` keeps its flat lookup-list shape but also carries
+`schema_version` + `knowledge_version`.
+
+---
+
 ## `lexicon.json`
 
 Plain-substring scam phrases (English/Tagalog/Taglish/etc).
 
 ```jsonc
 {
+  "schema_version": 1,
+  "knowledge_version": "2026.08.22.1",
   "entries": [
     {
-      "category": "investment",   // string — scam type, shown in reports
-      "phrase": "double your money", // string — substring match, case-insensitive
-      "severity": "high",         // "low" | "medium" | "high"
-      "weight": 12                // int — contributes to the risk score
+      "id": "lex.double-your-money",   // unique rule id
+      "category": "investment",        // string — scam type, shown in reports
+      "phrase": "double your money",   // substring match, case-insensitive
+      "severity": "high",              // info|low|medium|high|critical
+      "weight": 12,                    // int — contributes to the risk score
+      "...envelope...": "see above"
     }
   ]
 }
@@ -37,14 +85,18 @@ raw page HTML (URLs, wallet addresses, off-platform contact links, etc).
 
 ```jsonc
 {
+  "schema_version": 1,
+  "knowledge_version": "2026.08.22.1",
   "entries": [
     {
+      "id": "regex.telegram-bot-api",
       "category": "fake_gateway",     // string — signal group
       "label": "Telegram bot-API payment/exfil endpoint", // human-readable name
-      "severity": "high",             // "low" | "medium" | "high"
+      "severity": "high",             // info|low|medium|high|critical
       "weight": 14,                   // int
       "pattern": "api\\.telegram\\.org/bot[\\w:-]+", // Python regex, as a JSON string
-      "ignore_case": true             // optional, default true
+      "ignore_case": true,            // optional, default true
+      "...envelope...": "see above"
     }
   ]
 }
@@ -66,11 +118,15 @@ Regexes that flag obfuscated/packed JavaScript.
 
 ```jsonc
 {
+  "schema_version": 1,
+  "knowledge_version": "2026.08.22.1",
   "entries": [
     {
+      "id": "obf.eval-atob",
       "label": "eval(atob(...)) base64 execution", // human-readable name
       "pattern": "eval\\s*\\(\\s*atob\\s*\\(",       // Python regex string
-      "ignore_case": true                            // optional, default true
+      "ignore_case": true,                           // optional, default true
+      "...envelope...": "see above"
     }
   ]
 }
@@ -78,6 +134,39 @@ Regexes that flag obfuscated/packed JavaScript.
 
 Every hit is reported at a fixed `severity: "medium"`, `weight: 7` (set in
 `heuristics.py`); this file only supplies the label + pattern.
+
+---
+
+## `tech_signatures.json`
+
+Tech-stack fingerprinting rules (moved out of `techstack.py`). Four arrays:
+
+- `revealing_headers`: `{ id, header_name }` — headers parsed for product/version.
+- `cookie_signatures`: `{ id, cookie_name, product }` — Set-Cookie name → backend product.
+- `dom_signatures`: `{ id, product, pattern, ignore_case? }` — DOM asset-path regex → CMS/framework.
+- `js_lib_patterns`: `{ id, products: [...], pattern, ignore_case? }` — versioned JS-lib filename regex.
+
+All wrapped in the same `schema_version` / `knowledge_version` object.
+
+---
+
+## `posture_targets.json`
+
+Passive posture-probe rules (moved out of `config.py`). Two arrays:
+
+- `misconfig_targets`: `{ id, path, category, severity }` — sensitive paths probed
+  (status only; bodies never downloaded).
+- `security_headers_expected`: `{ id, header_name, severity_if_missing, explanation }` —
+  headers a well-configured site should send.
+
+---
+
+## `reference.json`
+
+Flat lookup lists (not scored rules, so no per-entry envelope):
+`currency_markers`, `ph_brands`, `brand_official_domains`, `suspicious_tlds`,
+`credential_hints`, `high_severity_credential_hints`, `phishy_path_words`.
+Carries `schema_version` + `knowledge_version` at the top level.
 
 ---
 

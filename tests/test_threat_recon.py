@@ -211,5 +211,90 @@ class TestEvidence(unittest.TestCase):
             self.assertTrue(os.path.exists(mpath))
 
 
+class TestKnowledgeSchema(unittest.TestCase):
+    def test_all_knowledge_files_load_and_validate(self):
+        from modules.recon import knowledge_loader as kb
+        self.assertTrue(len(kb.load_lexicon()) > 0)
+        self.assertTrue(len(kb.load_regex_detectors()) > 0)
+        self.assertTrue(len(kb.load_obfuscation_patterns()) > 0)
+        self.assertTrue(len(kb.load_revealing_headers()) > 0)
+        self.assertTrue(len(kb.load_cookie_signatures()) > 0)
+        self.assertTrue(len(kb.load_dom_signatures()) > 0)
+        self.assertTrue(len(kb.load_js_lib_patterns()) > 0)
+        self.assertTrue(len(kb.load_misconfig_targets()) > 0)
+        self.assertTrue(len(kb.load_security_headers_expected()) > 0)
+
+    def test_knowledge_version_is_stamped(self):
+        from modules.recon import knowledge_loader as kb
+        kv = kb.get_knowledge_version()
+        self.assertNotEqual(kv, "unknown")
+        self.assertIn("2026.08.22.1", kv)
+
+    def test_malformed_entry_raises_with_context(self):
+        from modules.recon import knowledge_loader as kb
+        with tempfile.TemporaryDirectory() as d:
+            bad = os.path.join(d, "lexicon.json")
+            with open(bad, "w", encoding="utf-8") as fh:
+                fh.write('{"schema_version": 1, "knowledge_version": "t", "entries": '
+                         '[{"category": "x", "phrase": "y", "severity": "high", '
+                         '"weight": 5, "bogus_field": 1}]}')
+            with self.assertRaises(ValueError) as ctx:
+                kb.load_lexicon(d)
+            self.assertIn("failed schema validation", str(ctx.exception))
+
+    def test_duplicate_rule_id_rejected(self):
+        from modules.recon import knowledge_loader as kb
+        with tempfile.TemporaryDirectory() as d:
+            bad = os.path.join(d, "lexicon.json")
+            entry = ('{"id": "lex.dup", "category": "x", "phrase": "y", '
+                     '"severity": "high", "weight": 5}')
+            with open(bad, "w", encoding="utf-8") as fh:
+                fh.write('{"schema_version": 1, "knowledge_version": "t", '
+                         '"entries": [' + entry + ',' + entry + ']}')
+            with self.assertRaises(ValueError) as ctx:
+                kb.load_lexicon(d)
+            self.assertIn("duplicate rule id", str(ctx.exception))
+
+    def test_disabled_rule_never_fires(self):
+        from modules.recon import knowledge_loader as kb
+        with tempfile.TemporaryDirectory() as d:
+            lex = os.path.join(d, "lexicon.json")
+            with open(lex, "w", encoding="utf-8") as fh:
+                fh.write('{"schema_version": 1, "knowledge_version": "t", "entries": ['
+                         '{"id": "lex.on", "category": "urgency", "phrase": "act now", '
+                         '"severity": "low", "weight": 4, "enabled": true},'
+                         '{"id": "lex.off", "category": "payment", "phrase": "activation fee", '
+                         '"severity": "high", "weight": 12, "enabled": false}]}')
+            kb.clear_cache()
+            try:
+                hits = heuristics.analyze_heuristics(_page(dom="act now! activation fee!"))
+                cats = {h.rule_id for h in hits}
+                self.assertIn("lex.on", cats)
+                self.assertNotIn("lex.off", cats)
+            finally:
+                kb.clear_cache()
+
+    def test_hits_carry_rule_ids(self):
+        dom = "double your money today"
+        hits = heuristics.analyze_heuristics(_page(dom=dom))
+        lex_hits = [h for h in hits if h.category == "scam_investment"]
+        self.assertTrue(lex_hits)
+        self.assertTrue(all(h.rule_id and h.rule_id.startswith("lex.") for h in lex_hits))
+
+    def test_techstack_uses_json_signatures(self):
+        from modules.recon import techstack
+        page = _page(dom='<meta name="generator" content="WordPress 5.2">'
+                         '<script src="/wp-content/themes/x.js"></script>'
+                         'jquery-3.4.1.min.js',
+                     headers={"Server": "nginx/1.14.0",
+                              "Set-Cookie": "PHPSESSID=abc; wordpress_logged_in=xyz"})
+        fps = techstack.map_tech_stack(page)
+        by_product = {f.product: f for f in fps}
+        self.assertIn("nginx", by_product)
+        self.assertIn("WordPress", by_product)
+        self.assertIn("PHP", by_product)  # canonical casing from the JSON rule
+        self.assertTrue(all(f.rule_id for f in fps))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

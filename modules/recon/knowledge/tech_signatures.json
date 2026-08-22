@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "knowledge_version": "2026.08.22.1",
+  "revealing_headers": [
+    { "id": "hdr.server", "header_name": "server" },
+    { "id": "hdr.x-powered-by", "header_name": "x-powered-by" },
+    { "id": "hdr.x-generator", "header_name": "x-generator" },
+    { "id": "hdr.x-aspnet-version", "header_name": "x-aspnet-version" },
+    { "id": "hdr.x-drupal-cache", "header_name": "x-drupal-cache" },
+    { "id": "hdr.via", "header_name": "via" }
+  ],
+  "cookie_signatures": [
+    { "id": "cookie.wordpress-logged-in", "cookie_name": "wordpress_logged_in", "product": "WordPress" },
+    { "id": "cookie.wp-settings", "cookie_name": "wp-settings", "product": "WordPress" },
+    { "id": "cookie.woocommerce", "cookie_name": "woocommerce", "product": "WooCommerce" },
+    { "id": "cookie.phpsessid", "cookie_name": "phpsessid", "product": "PHP" },
+    { "id": "cookie.jsessionid", "cookie_name": "jsessionid", "product": "Java" },
+    { "id": "cookie.aspnet-sessionid", "cookie_name": "asp.net_sessionid", "product": "ASP.NET" },
+    { "id": "cookie.aspsessionid", "cookie_name": "aspsessionid", "product": "ASP" },
+    { "id": "cookie.laravel-session", "cookie_name": "laravel_session", "product": "Laravel" },
+    { "id": "cookie.xsrf-token", "cookie_name": "xsrf-token", "product": "Laravel" },
+    { "id": "cookie.ci-session", "cookie_name": "ci_session", "product": "CodeIgniter" },
+    { "id": "cookie.csrftoken", "cookie_name": "csrftoken", "product": "Django" },
+    { "id": "cookie.sessionid", "cookie_name": "sessionid", "product": "Django" },
+    { "id": "cookie.shopify", "cookie_name": "_shopify", "product": "Shopify" },
+    { "id": "cookie.cfduid", "cookie_name": "cfduid", "product": "Cloudflare" },
+    { "id": "cookie.cf-bm", "cookie_name": "__cf_bm", "product": "Cloudflare" }
+  ],
+  "dom_signatures": [
+    { "id": "dom.wordpress", "product": "WordPress", "pattern": "/wp-(?:content|includes)/" },
+    { "id": "dom.drupal", "product": "Drupal", "pattern": "/sites/(?:all|default)/|drupal-settings-json" },
+    { "id": "dom.joomla", "product": "Joomla", "pattern": "/media/jui/|/templates/[^/]+/joomla|joomla!" },
+    { "id": "dom.magento", "product": "Magento", "pattern": "/static/version\\d|/mage/|magento" },
+    { "id": "dom.shopify", "product": "Shopify", "pattern": "cdn\\.shopify\\.com|shopify\\.theme" },
+    { "id": "dom.wix", "product": "Wix", "pattern": "static\\.wixstatic\\.com|wix\\.com" },
+    { "id": "dom.squarespace", "product": "Squarespace", "pattern": "squarespace" },
+    { "id": "dom.nextjs", "product": "Next.js", "pattern": "/_next/static/" },
+    { "id": "dom.react", "product": "React", "pattern": "data-reactroot|/react(?:\\.production)?\\.min\\.js" },
+    { "id": "dom.vue", "product": "Vue.js", "pattern": "data-v-[0-9a-f]{8}|vue(?:\\.runtime)?\\.min\\.js" }
+  ],
+  "js_lib_patterns": [
+    {
+      "id": "jslib.versioned",
+      "products": ["jquery", "bootstrap", "angular", "angularjs", "vue", "react", "lodash", "moment"],
+      "pattern": "\\b(jquery|bootstrap|angular(?:js)?|vue|react|lodash|moment)[-./ ]v?(\\d+(?:\\.\\d+){1,3})"
+    }
+  ]
+}

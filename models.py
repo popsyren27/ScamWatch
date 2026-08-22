@@ -84,6 +84,7 @@ class TechFingerprint(_StrictModel):
     product: StrictStr
     version: Optional[StrictStr] = None
     source: StrictStr  # e.g. "header:Server", "meta:generator"
+    rule_id: Optional[StrictStr] = None  # knowledge rule that produced this
 
 
 class CveRecord(_StrictModel):
@@ -115,6 +116,7 @@ class HeuristicHit(_StrictModel):
     evidence: StrictStr = ""
     severity: StrictStr = "low"
     weight: StrictInt = 0
+    rule_id: Optional[StrictStr] = None  # knowledge rule that produced this
 
 
 class MisconfigFinding(_StrictModel):
@@ -199,6 +201,7 @@ class ScanReport(_StrictModel):
     target_url: StrictStr
     timestamp_utc: StrictStr
     status: StrictStr = ScanStatus.QUEUED
+    knowledge_version: StrictStr = ""  # knowledge state used for this scan
     proxy: Optional[ProxyIdentity] = None
     page: Optional[IngestedPage] = None
     tech_stack: List[TechFingerprint] = Field(default_factory=list)

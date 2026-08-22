@@ -80,7 +80,7 @@ def _scan_qr(screenshot_path: str) -> List[HeuristicHit]:
                 elif any(k in low for k in ("gcash", "maya", "paymaya", "bitcoin",
                                             "bc1", "0x", "usdt", "amount=")):
                     severity, weight = "high", 12
-                hits.append(HeuristicHit(category="payment_qr",
+                hits.append(HeuristicHit(category="payment_qr", rule_id="ref.payment-qr",
                     detail=f"Embedded {code.type} QR decoded.",
                     evidence=payload[:300], severity=severity, weight=weight))
     except FileNotFoundError:
@@ -93,13 +93,14 @@ def _scan_qr(screenshot_path: str) -> List[HeuristicHit]:
 def _scan_phrases(lowered: str) -> List[HeuristicHit]:
     """Match the multi-category scam lexicon and soft currency markers."""
     hits: List[HeuristicHit] = []
-    for category, phrase, severity, weight in _SCAM_LEXICON:
+    # read through the loader (lru_cached) so clear_cache() is honoured
+    for rule_id, category, phrase, severity, weight in kb.load_lexicon():
         if phrase in lowered:
-            hits.append(HeuristicHit(category=f"scam_{category}",
+            hits.append(HeuristicHit(category=f"scam_{category}", rule_id=rule_id,
                 detail=f"{category.title()} scam phrasing: '{phrase}'.",
                 evidence=phrase, severity=severity, weight=weight))
     if any(marker in lowered for marker in _CURRENCY_MARKERS):
-        hits.append(HeuristicHit(category="ph_currency",
+        hits.append(HeuristicHit(category="ph_currency", rule_id="ref.ph-currency",
             detail="Philippine peso / e-wallet currency context detected.",
             evidence="₱/PHP/GCash/Maya marker", severity="info", weight=2))
     return hits
@@ -107,14 +108,14 @@ def _scan_phrases(lowered: str) -> List[HeuristicHit]:
 
 def _scan_regex(dom_html: str) -> List[HeuristicHit]:
     hits: List[HeuristicHit] = []
-    for category, label, severity, weight, pattern in _REGEX_DETECTORS:
+    for rule_id, category, label, severity, weight, pattern in _REGEX_DETECTORS:
         seen: set = set()  # same token can match a pattern more than once
         for match in pattern.findall(dom_html):
             token = str(match)[:200]
             if token in seen:
                 continue
             seen.add(token)
-            hits.append(HeuristicHit(category=category, detail=label,
+            hits.append(HeuristicHit(category=category, rule_id=rule_id, detail=label,
                 evidence=token, severity=severity, weight=weight))
     return hits
 
@@ -122,9 +123,9 @@ def _scan_regex(dom_html: str) -> List[HeuristicHit]:
 def _scan_obfuscation(dom_html: str) -> List[HeuristicHit]:
     """Flag packed/obfuscated JS commonly used to hide phishing behaviour."""
     hits: List[HeuristicHit] = []
-    for label, pattern in _OBFUSCATION_PATTERNS:
+    for rule_id, label, pattern in _OBFUSCATION_PATTERNS:
         if pattern.search(dom_html):
-            hits.append(HeuristicHit(category="obfuscation",
+            hits.append(HeuristicHit(category="obfuscation", rule_id=rule_id,
                 detail=f"Obfuscated/dynamic JavaScript: {label}.",
                 evidence=label, severity="medium", weight=7))
     return hits
@@ -139,7 +140,9 @@ def _scan_credential_fields(dom_html: str) -> List[HeuristicHit]:
         if hint in found:
             return
         found.add(hint)
-        hits.append(HeuristicHit(category="credential_harvest",
+        rule_id = ("ref.credential-hint-high" if hint in _HIGH_SEVERITY_CREDENTIAL_HINTS
+                   else "ref.credential-hint")
+        hits.append(HeuristicHit(category="credential_harvest", rule_id=rule_id,
             detail=f"Sensitive input field collecting '{hint}'.",
             evidence=hint, severity=severity, weight=weight))
 
@@ -185,19 +188,20 @@ def _scan_brand_and_domain(lowered: str, host: str,
                       "form, off the brand's official domain."
                       if has_credential_form else
                       "PH financial brand referenced on a non-official domain.")
-            hits.append(HeuristicHit(category="brand_impersonation", detail=detail,
+            hits.append(HeuristicHit(category="brand_impersonation", rule_id="ref.brand-impersonation",
+                detail=detail,
                 evidence=f"{', '.join(named)} @ {host}", severity=severity, weight=weight))
 
     if host:
         if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", host):
-            hits.append(HeuristicHit(category="domain_reputation",
+            hits.append(HeuristicHit(category="domain_reputation", rule_id="ref.raw-ip-host",
                 detail="Site served from a raw IP address (no domain) — common for "
                        "disposable scam infrastructure.",
                 evidence=host, severity="low", weight=4))
         else:
             tld = "." + host.rsplit(".", 1)[-1] if "." in host else ""
             if tld in _SUSPICIOUS_TLDS:
-                hits.append(HeuristicHit(category="domain_reputation",
+                hits.append(HeuristicHit(category="domain_reputation", rule_id="ref.suspicious-tld",
                     detail=f"Host sits on a frequently-abused, throwaway TLD ({tld}).",
                     evidence=host, severity="low", weight=5))
     return hits
@@ -211,28 +215,28 @@ def _scan_url_anomalies(final_url: str, host: str) -> List[HeuristicHit]:
     parsed = urlparse(final_url if "://" in final_url else f"http://{final_url}")
 
     if host.startswith("xn--") or ".xn--" in host:
-        hits.append(HeuristicHit(category="url_anomaly",
+        hits.append(HeuristicHit(category="url_anomaly", rule_id="ref.punycode-host",
             detail="Punycode/IDN host — may be a homograph lookalike of a real brand.",
             evidence=host, severity="medium", weight=8))
     if "@" in (parsed.netloc or ""):
-        hits.append(HeuristicHit(category="url_anomaly",
+        hits.append(HeuristicHit(category="url_anomaly", rule_id="ref.at-in-url",
             detail="URL embeds an '@' — the real host is AFTER it, a classic "
                    "obfuscation to disguise the destination.",
             evidence=parsed.netloc[:80], severity="high", weight=10))
     labels = host.split(".") if host else []
     if len(labels) >= 5:
-        hits.append(HeuristicHit(category="url_anomaly",
+        hits.append(HeuristicHit(category="url_anomaly", rule_id="ref.subdomain-depth",
             detail=f"Excessive sub-domain depth ({len(labels)} labels) — brand names "
                    "are often stuffed into sub-domains to look legitimate.",
             evidence=host, severity="low", weight=4))
     if host.count("-") >= 4:
-        hits.append(HeuristicHit(category="url_anomaly",
+        hits.append(HeuristicHit(category="url_anomaly", rule_id="ref.hyphen-stuffing",
             detail="Many hyphens in the host — typical of throwaway lookalike domains.",
             evidence=host, severity="low", weight=3))
     path = (parsed.path or "").lower()
     phishy = sorted({w for w in _PHISHY_PATH_WORDS if w in path})
     if phishy:
-        hits.append(HeuristicHit(category="url_anomaly",
+        hits.append(HeuristicHit(category="url_anomaly", rule_id="ref.phishy-path",
             detail=f"URL path contains sensitive-action keyword(s): {', '.join(phishy)}.",
             evidence=path[:120], severity="low", weight=4))
     return hits

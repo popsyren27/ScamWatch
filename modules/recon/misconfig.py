@@ -17,10 +17,11 @@ from urllib.parse import urljoin, urlparse
 
 from pydantic import StrictStr, validate_call
 
-from config import CATCHALL_PROBE_PATHS, MISCONFIG_META, MISCONFIG_PATHS
+from config import CATCHALL_PROBE_PATHS
 from models import MisconfigFinding
 from modules.logging_setup import get_logger
 from modules.proxy.tor_manager import build_client
+from modules.recon import knowledge_loader as kb
 
 log = get_logger("recon.misconfig")
 
@@ -94,11 +95,10 @@ async def _fetch_status(client: Any, full: str) -> Any:
     return resp
 
 
-async def _probe(client: Any, base: str, path: str, catchall: bool,
-                  baseline_len: Optional[int]) -> MisconfigFinding:
+async def _probe(client: Any, base: str, path: str, category: str, severity: str,
+                  catchall: bool, baseline_len: Optional[int]) -> MisconfigFinding:
     """Check one sensitive path. This function refuses to throw — worst case, 'not exposed'."""
     full = urljoin(base, path.lstrip("/"))
-    category, severity = MISCONFIG_META.get(path, ("", "info"))
 
     try:
         resp = await _fetch_status(client, full)
@@ -125,11 +125,12 @@ async def _probe(client: Any, base: str, path: str, catchall: bool,
                              category=category, severity=severity if exposed else "info")
 
 
-async def _run_all_probes(client: Any, base: str, catchall: bool,
-                           baseline_len: Optional[int]) -> list[MisconfigFinding]:
+async def _run_all_probes(client: Any, base: str, targets: tuple,
+                           catchall: bool, baseline_len: Optional[int]) -> list[MisconfigFinding]:
     """Fire every configured path probe at once, and drop any that blow up."""
     raw_results = await asyncio.gather(
-        *[_probe(client, base, p, catchall, baseline_len) for p in MISCONFIG_PATHS],
+        *[_probe(client, base, path, category, severity, catchall, baseline_len)
+          for _rule_id, path, category, severity in targets],
         return_exceptions=True,
     )
     findings: list[MisconfigFinding] = []
@@ -151,11 +152,12 @@ async def check_misconfigurations(target_url: StrictStr,
     """
     base = _origin(target_url)
     client = build_client(direct=direct)
+    targets = kb.load_misconfig_targets()
     findings: list[MisconfigFinding] = []
     try:
         # baseline first, always — probing without it means trusting a liar host
         catchall, baseline_len = await _baseline(client, base)
-        findings = await _run_all_probes(client, base, catchall, baseline_len)
+        findings = await _run_all_probes(client, base, targets, catchall, baseline_len)
     except Exception as exc:
         log.error("Misconfiguration sweep error (continuing): %s", exc)
     finally:
