@@ -1,0 +1,29 @@
+{
+  "entries": [
+    {
+      "label": "eval(atob(...)) base64 execution",
+      "pattern": "eval\\s*\\(\\s*atob\\s*\\(",
+      "ignore_case": true
+    },
+    {
+      "label": "eval(unescape(...)) execution",
+      "pattern": "eval\\s*\\(\\s*unescape\\s*\\(",
+      "ignore_case": true
+    },
+    {
+      "label": "String.fromCharCode payload chain",
+      "pattern": "(?:String\\.)?fromCharCode\\s*\\((?:\\s*\\d+\\s*,){8,}",
+      "ignore_case": true
+    },
+    {
+      "label": "document.write of dynamic markup",
+      "pattern": "document\\.write\\s*\\(",
+      "ignore_case": true
+    },
+    {
+      "label": "packed/minified eval loader",
+      "pattern": "eval\\(function\\(p,a,c,k,e",
+      "ignore_case": true
+    }
+  ]
+}

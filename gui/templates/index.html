@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>THREAT-RECON · Command Center</title>
+  <style>
+    :root {
+      --bg: #0b0f14; --panel: #131a23; --line: #243140;
+      --txt: #d6e2ef; --muted: #7d93a8; --accent: #38bdf8;
+      --ok: #34d399; --warn: #fbbf24; --bad: #f87171;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      background: var(--bg); color: var(--txt); padding: 2rem;
+    }
+    h1 { font-size: 1.4rem; letter-spacing: .08em; margin: 0 0 .25rem; }
+    .sub { color: var(--muted); font-size: .8rem; margin-bottom: 1.5rem; }
+    .panel {
+      background: var(--panel); border: 1px solid var(--line);
+      border-radius: 10px; padding: 1.25rem; margin-bottom: 1.25rem;
+    }
+    form { display: flex; gap: .75rem; }
+    input[type=text] {
+      flex: 1; padding: .7rem .9rem; border-radius: 8px;
+      border: 1px solid var(--line); background: #0d1219; color: var(--txt);
+      font-family: inherit; font-size: .95rem;
+    }
+    button {
+      padding: .7rem 1.3rem; border: none; border-radius: 8px;
+      background: var(--accent); color: #04121b; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+    }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .status { display: flex; align-items: center; gap: .6rem; font-size: 1rem; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent);
+           animation: pulse 1s infinite; }
+    .dot.done { background: var(--ok); animation: none; }
+    .dot.failed { background: var(--bad); animation: none; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .muted { color: var(--muted); }
+    .section-title { color: var(--accent); font-size: .8rem; text-transform: uppercase;
+      letter-spacing: .1em; margin: 1rem 0 .5rem; border-bottom: 1px solid var(--line);
+      padding-bottom: .3rem; }
+    .tag { display: inline-block; padding: .1rem .5rem; border-radius: 5px;
+      font-size: .72rem; margin-right: .35rem; }
+    .tag.bad { background: rgba(248,113,113,.15); color: var(--bad); }
+    .tag.warn { background: rgba(251,191,36,.15); color: var(--warn); }
+    .tag.ok { background: rgba(52,211,153,.15); color: var(--ok); }
+    ul { margin: .25rem 0; padding-left: 1.1rem; }
+    li { margin: .2rem 0; font-size: .85rem; }
+    code { color: var(--warn); word-break: break-all; }
+    .hidden { display: none; }
+    .kv { display: grid; grid-template-columns: 160px 1fr; gap: .25rem .75rem;
+      font-size: .85rem; }
+    .kv b { color: var(--muted); font-weight: 400; }
+    .risk { border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1rem;
+      border: 1px solid var(--line); }
+    .risk h2 { margin: 0 0 .25rem; font-size: 1.1rem; letter-spacing: .04em; }
+    .risk .score { font-size: .8rem; opacity: .85; }
+    .risk .contrib { font-size: .75rem; margin-top: .4rem; opacity: .8; }
+    .risk.Critical { background: rgba(185,28,28,.18); border-color: #b91c1c; color: #fecaca; }
+    .risk.High { background: rgba(234,88,12,.16); border-color: #ea580c; color: #fed7aa; }
+    .risk.Medium { background: rgba(202,138,4,.15); border-color: #ca8a04; color: #fde68a; }
+    .risk.Low, .risk.Clean { background: rgba(21,128,61,.15); border-color: #15803d; color: #bbf7d0; }
+    .risk.Unknown { background: rgba(51,65,85,.4); color: var(--muted); }
+    .sev { display:inline-block; min-width: 58px; text-align:center; padding:.05rem .4rem;
+      border-radius: 5px; font-size:.66rem; margin-right:.4rem; text-transform: uppercase; }
+    .sev.critical { background: rgba(185,28,28,.25); color:#fecaca; }
+    .sev.high { background: rgba(234,88,12,.22); color:#fed7aa; }
+    .sev.medium { background: rgba(202,138,4,.2); color:#fde68a; }
+    .sev.low { background: rgba(56,189,248,.18); color:#bae6fd; }
+    .sev.info { background: rgba(125,147,168,.2); color:#cbd5e1; }
+  </style>
+</head>
+<body>
+  <h1>🛡️ THREAT-RECON</h1>
+  <div class="sub">Passive scam-site reconnaissance · routed through Tor · localhost only</div>
+
+  <div class="panel">
+    <form id="scan-form">
+      <input id="url" type="text" placeholder="https://suspicious-site.example" autocomplete="off" />
+      <button id="go" type="submit">Scan</button>
+    </form>
+  </div>
+
+  <div id="progress" class="panel hidden">
+    <div class="status">
+      <span id="dot" class="dot"></span>
+      <span id="status-text">Queued</span>
+    </div>
+    <div class="muted" id="target-line" style="margin-top:.5rem;font-size:.8rem;"></div>
+  </div>
+
+  <div id="results" class="panel hidden"></div>
+
+<script>
+const form = document.getElementById('scan-form');
+const go = document.getElementById('go');
+const progress = document.getElementById('progress');
+const dot = document.getElementById('dot');
+const statusText = document.getElementById('status-text');
+const targetLine = document.getElementById('target-line');
+const results = document.getElementById('results');
+let poll = null;
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const url = document.getElementById('url').value.trim();
+  if (!url) return;
+  go.disabled = true;
+  results.classList.add('hidden');
+  results.innerHTML = '';
+  progress.classList.remove('hidden');
+  dot.className = 'dot';
+  statusText.textContent = 'Queued';
+
+  try {
+    const fd = new FormData();
+    fd.append('url', url);
+    const res = await fetch('/scan', { method: 'POST', body: fd });
+    if (!res.ok) throw new Error((await res.json()).detail || 'Failed to queue scan');
+    const { scan_id, target } = await res.json();
+    targetLine.textContent = 'Target: ' + target;
+    startPolling(scan_id);
+  } catch (err) {
+    statusText.textContent = 'Error: ' + err.message;
+    dot.className = 'dot failed';
+    go.disabled = false;
+  }
+});
+
+function startPolling(scanId) {
+  if (poll) clearInterval(poll);
+  poll = setInterval(async () => {
+    try {
+      const res = await fetch('/status/' + scanId);
+      const data = await res.json();
+      statusText.textContent = data.status;
+      if (data.done) {
+        clearInterval(poll);
+        dot.className = data.status === 'Failed' ? 'dot failed' : 'dot done';
+        go.disabled = false;
+        if (data.report) renderReport(data.report);
+      }
+    } catch (err) {
+      statusText.textContent = 'Poll error: ' + err.message;
+    }
+  }, 1200);
+}
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"]/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+function sev(s) {
+  const v = String(s || 'info').toLowerCase();
+  return `<span class="sev ${v}">${esc(v)}</span>`;
+}
+
+function renderReport(r) {
+  let html = '';
+
+  if (r.risk) {
+    const lvl = esc(r.risk.level || 'Unknown');
+    html += `<div class="risk ${lvl}"><h2>RISK: ${lvl.toUpperCase()} ` +
+            `<span class="score">· ${esc(r.risk.score)}/100</span></h2>` +
+            `<div>${esc(r.risk.summary)}</div>`;
+    if (r.risk.contributions && r.risk.contributions.length)
+      html += '<div class="contrib">' +
+              r.risk.contributions.map(c => '• ' + esc(c)).join('<br>') + '</div>';
+    html += '</div>';
+  }
+
+  html += '<div class="section-title">Target & Routing</div><div class="kv">';
+  html += `<b>Target</b><span>${esc(r.target_url)}</span>`;
+  html += `<b>Timestamp</b><span>${esc(r.timestamp_utc)}</span>`;
+  if (r.page) {
+    html += `<b>Final URL</b><span>${esc(r.page.final_url)}</span>`;
+    html += `<b>HTTP status</b><span>${esc(r.page.http_status)}</span>`;
+  }
+  if (r.proxy) {
+    const tag = r.proxy.is_anonymous ? '<span class="tag ok">ANONYMOUS</span>'
+                                     : '<span class="tag bad">LEAK</span>';
+    html += `<b>Exit IP (Tor)</b><span>${esc(r.proxy.exit_ip)} ${tag}</span>`;
+    html += `<b>Host IP</b><span>${esc(r.proxy.host_ip)}</span>`;
+  }
+  html += '</div>';
+
+  html += '<div class="section-title">Scam Heuristics</div>';
+  if (r.heuristics && r.heuristics.length) {
+    const sorted = [...r.heuristics].sort((a, b) => (b.weight || 0) - (a.weight || 0));
+    html += '<ul>';
+    for (const h of sorted)
+      html += `<li>${sev(h.severity)}<span class="tag warn">${esc(h.category)}</span>${esc(h.detail)}` +
+              (h.evidence ? ` — <code>${esc(h.evidence)}</code>` : '') + '</li>';
+    html += '</ul>';
+  } else html += '<div class="muted">No scam heuristics triggered.</div>';
+
+  html += '<div class="section-title">Tech Stack</div>';
+  if (r.tech_stack && r.tech_stack.length) {
+    html += '<ul>';
+    for (const t of r.tech_stack)
+      html += `<li>${esc(t.product)}${t.version ? ' ' + esc(t.version) : ''} ` +
+              `<span class="muted">(${esc(t.source)})</span></li>`;
+    html += '</ul>';
+  } else html += '<div class="muted">None identified.</div>';
+
+  html += '<div class="section-title">Known CVEs</div>';
+  if (r.cves && r.cves.length) {
+    html += '<ul>';
+    for (const c of r.cves)
+      html += `<li><span class="tag bad">${esc(c.cve_id)}</span>${esc(c.severity)}` +
+              (c.score != null ? ` (CVSS ${esc(c.score)})` : '') +
+              ` — ${esc(c.summary)}</li>`;
+    html += '</ul>';
+  } else html += '<div class="muted">No CVEs cross-referenced.</div>';
+
+  html += '<div class="section-title">Exposed Paths</div>';
+  const exposed = (r.misconfigs || []).filter(m => m.exposed);
+  if (exposed.length) {
+    html += '<ul>';
+    for (const m of exposed)
+      html += `<li>${sev(m.severity)}<span class="tag bad">EXPOSED</span>` +
+              `<code>${esc(m.path)}</code> → HTTP ${esc(m.http_status)}` +
+              (m.category ? ` <span class="muted">(${esc(m.category)})</span>` : '') + '</li>';
+    html += '</ul>';
+  } else html += '<div class="muted">None exposed.</div>';
+
+  html += '<div class="section-title">Security Posture</div>';
+  if (r.security_findings && r.security_findings.length) {
+    html += '<ul>';
+    for (const s of r.security_findings)
+      html += `<li>${sev(s.severity)}<span class="tag warn">${esc(s.category)}</span>${esc(s.detail)}</li>`;
+    html += '</ul>';
+  } else html += '<div class="muted">No passive security weaknesses observed.</div>';
+
+  // --- Intelligence: registration, hosting, campaign ---
+  if (r.intel) {
+    const i = r.intel;
+    html += '<div class="section-title">Domain Intelligence</div><div class="kv">';
+    if (i.domain) html += `<b>Domain</b><span>${esc(i.domain)}</span>`;
+    if (i.age_days != null) {
+      const ageTag = i.age_days <= 30 ? '<span class="tag bad">NEW</span>' : '';
+      html += `<b>Age</b><span>${esc(i.age_days)} days ${ageTag}</span>`;
+    }
+    if (i.registrar) html += `<b>Registrar</b><span>${esc(i.registrar)}</span>`;
+    if (i.registrar_abuse_email) html += `<b>Registrar abuse</b><span>${esc(i.registrar_abuse_email)}</span>`;
+    if (i.hosting_provider) html += `<b>Hosting</b><span>${esc(i.hosting_provider)}${i.asn ? ' ('+esc(i.asn)+')' : ''}</span>`;
+    if (i.hosting_abuse_email) html += `<b>Hosting abuse</b><span>${esc(i.hosting_abuse_email)}</span>`;
+    html += '</div>';
+    if (i.related_domains && i.related_domains.length)
+      html += `<div class="muted" style="margin-top:.4rem;">Campaign siblings (shared cert): ` +
+              `${i.related_domains.slice(0,12).map(esc).join(', ')}</div>`;
+  }
+
+  // --- External threat feeds & visual impersonation ---
+  const listed = (r.threat_intel || []).filter(t => t.listed);
+  if (listed.length || (r.visual_matches && r.visual_matches.length)) {
+    html += '<div class="section-title">Threat Corroboration</div><ul>';
+    for (const t of listed)
+      html += `<li><span class="tag bad">${esc(t.source)}</span>${esc(t.detail)}</li>`;
+    for (const v of (r.visual_matches || []))
+      html += `<li><span class="tag bad">VISUAL</span>Impersonates <b>${esc(v.brand)}</b> (similarity ${esc(v.similarity)})</li>`;
+    html += '</ul>';
+  }
+
+  // --- Change since previous scan ---
+  if (r.diff_summary && r.diff_summary.length) {
+    html += '<div class="section-title">Change Since Last Scan</div><ul>';
+    for (const d of r.diff_summary) html += `<li class="muted">${esc(d)}</li>`;
+    html += '</ul>';
+  }
+
+  if (r.errors && r.errors.length) {
+    html += '<div class="section-title">Operational Notes</div><ul>';
+    for (const e of r.errors) html += `<li class="muted">${esc(e)}</li>`;
+    html += '</ul>';
+  }
+
+  html += '<div class="section-title">Artifacts</div>' +
+          '<div class="muted">JSON & PDF report, a drafted <code>abuse_*.txt</code> takedown ' +
+          'request, and a <code>MANIFEST.sha256.json</code> integrity record written to ' +
+          '<code>artifacts/</code>.</div>';
+
+  results.innerHTML = html;
+  results.classList.remove('hidden');
+}
+</script>
+</body>
+</html>

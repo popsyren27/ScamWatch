@@ -1,0 +1,32 @@
+# ==========================================================================
+# PROJECT "THREAT-RECON" — Dependency Manifest
+# --------------------------------------------------------------------------
+# Pinned to major versions known to be mutually compatible. Every dependency
+# is optional at runtime: each module degrades gracefully (see Rule 2) if its
+# library is missing, so the application can boot even on a partially
+# provisioned host. Install everything for full functionality.
+# ==========================================================================
+
+# --- Core / typing ---------------------------------------------------------
+pydantic>=2.6,<3.0          # Strict, immutable data models (StrictStr/StrictInt)
+
+# --- Phase 1: Anonymity & Network Layer -----------------------------------
+httpx[socks]>=0.27,<0.29    # Async HTTP, SOCKS5 support for Tor routing (uses proxy=)
+stem>=1.8,<2.0              # Tor controller (circuit rotation via control port)
+PySocks>=1.7,<2.0           # SOCKS proxy plumbing
+
+# --- Phase 2: Data Ingestion Engine ---------------------------------------
+playwright>=1.44,<2.0       # Headless dynamic rendering (run: playwright install)
+
+# --- Phase 3: Passive Recon -----------------------------------------------
+beautifulsoup4>=4.12,<5.0   # DOM parsing
+pyzbar>=0.1.9,<0.2          # QR/barcode decode (needs the native `zbar` lib)
+Pillow>=10.0,<11.0          # Image handling for screenshot QR scan
+
+# --- Phase 4: Localhost GUI -----------------------------------------------
+fastapi>=0.110,<1.0         # Backend routing
+uvicorn[standard]>=0.29,<1.0  # ASGI server (127.0.0.1 only)
+jinja2>=3.1,<4.0            # Server-side templates
+
+# --- Phase 5: Report Generator --------------------------------------------
+reportlab>=4.1,<5.0         # PDF evidence reports

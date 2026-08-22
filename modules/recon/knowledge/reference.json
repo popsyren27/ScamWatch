@@ -1,0 +1,32 @@
+{
+  "currency_markers": ["₱", "php ", "pesos", "piso", "gcash", "maya"],
+  "ph_brands": [
+    "gcash", "maya", "paymaya", "gotyme", "seabank", "unionbank", "bpi",
+    "bdo", "metrobank", "landbank", "pnb", "rcbc", "chinabank", "coins.ph",
+    "grabpay", "shopeepay", "palawan", "cebuana", "lhuillier", "western union",
+    "lazada", "shopee", "dragonpay", "instapay", "pesonet"
+  ],
+  "brand_official_domains": [
+    "gcash.com", "mynt.xyz", "maya.ph", "paymaya.com", "gotyme.com.ph",
+    "unionbankph.com", "bpi.com.ph", "bdo.com.ph", "metrobank.com.ph",
+    "landbank.com", "coins.ph", "grab.com", "shopee.ph", "lazada.com.ph",
+    "dragonpay.ph", "westernunion.com", "mlhuillier.com", "cebuanalhuillier.com"
+  ],
+  "suspicious_tlds": [
+    ".xyz", ".top", ".tk", ".ml", ".ga", ".cf", ".gq", ".icu", ".live",
+    ".online", ".site", ".club", ".fun", ".shop", ".store", ".buzz", ".cyou",
+    ".sbs", ".rest", ".monster", ".quest", ".click", ".link", ".work"
+  ],
+  "credential_hints": [
+    "mpin", "m-pin", "otp", "one-time", "one time pin", "cvv", "cvc",
+    "card number", "card no", "atm pin", "pin code", "security code",
+    "expiry", "expiration", "password", "passcode"
+  ],
+  "high_severity_credential_hints": [
+    "mpin", "otp", "cvv", "atm pin"
+  ],
+  "phishy_path_words": [
+    "login", "signin", "verify", "secure", "account", "update", "confirm",
+    "webscr", "banking", "wallet", "recover", "unlock"
+  ]
+}

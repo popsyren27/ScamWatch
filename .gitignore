@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Runtime evidence — screenshots & generated reports
+artifacts/
+
+# Tor daemon state (created when running `tor -f torrc`)
+tor-data/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+instructions.md
+todo.txt

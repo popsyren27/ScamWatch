@@ -1,0 +1,31 @@
+# ==========================================================================
+# torrc — Tor configuration for PROJECT "THREAT-RECON"
+# --------------------------------------------------------------------------
+# Start Tor with this file:
+#     tor -f torrc
+#
+# These values mirror config.py. If you change a port here, change it there too.
+# ==========================================================================
+
+# --- SOCKS proxy (required) -----------------------------------------------
+# All scanner traffic is routed through this. config.TOR_SOCKS_PORT = 9050.
+SocksPort 127.0.0.1:9050
+
+# --- Control port (optional: enables per-scan circuit rotation) ------------
+# tor_manager.py sends NEWNYM here to get a fresh exit IP before each scan.
+# config.TOR_CONTROL_PORT = 9051.
+ControlPort 127.0.0.1:9051
+
+# Authentication for the control port.
+#   CookieAuthentication 1  -> stem authenticates via the auth cookie file.
+#                              Matches config.TOR_CONTROL_PASSWORD = "" (no password).
+# If cookie auth fails on Windows (permission issues), comment this out and use
+# a password instead: run  tor --hash-password "yourpass"  and paste the result
+# into a HashedControlPassword line below, then set TOR_CONTROL_PASSWORD in config.py.
+CookieAuthentication 1
+# HashedControlPassword 16:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+# --- Housekeeping ----------------------------------------------------------
+# Keep Tor's own data/logs inside the project so nothing leaks into your profile.
+DataDirectory ./tor-data
+Log notice stdout
