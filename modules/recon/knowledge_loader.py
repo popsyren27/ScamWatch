@@ -27,6 +27,7 @@ from modules.recon.knowledge_schema import (
     CookieSignatureEntry, DomSignatureEntry, JsLibPatternEntry,
     LexiconEntry, MisconfigTargetEntry, ObfuscationEntry,
     RegexDetectorEntry, RevealingHeaderEntry, SecurityHeaderEntry,
+    SoftLexiconEntry,
     validate_entries,
 )
 
@@ -244,9 +245,24 @@ def load_security_headers_expected(
 # Aggregate knowledge version
 # --------------------------------------------------------------------------
 
+@lru_cache(maxsize=None)
+def load_soft_lexicon(
+    knowledge_dir: str | None = None,
+) -> Tuple[Tuple[str, str, str, str, int], ...]:
+    """Returns (rule_id, phrase_normalized, language, severity, weight) tuples."""
+    raw = _read_json(_knowledge_dir(knowledge_dir) / "soft_lexicon.json")
+    entries = validate_entries("soft_lexicon.json", raw, SoftLexiconEntry)
+    from modules.recon.fuzzy_lexical import normalize_text
+    return tuple(
+        (e.id, normalize_text(e.phrase), e.language, e.severity, e.weight)
+        for e in entries if e.enabled
+    )
+
+
 _VERSIONED_FILES: Final[Tuple[str, ...]] = (
     "lexicon.json", "regex_detectors.json", "obfuscation_patterns.json",
     "reference.json", "tech_signatures.json", "posture_targets.json",
+    "soft_lexicon.json",
 )
 
 
@@ -269,6 +285,7 @@ def get_knowledge_version(knowledge_dir: str | None = None) -> str:
 def clear_cache() -> None:
     """Drop all cached knowledge so the next load_* call re-reads from disk."""
     load_lexicon.cache_clear()
+    load_soft_lexicon.cache_clear()
     load_regex_detectors.cache_clear()
     load_obfuscation_patterns.cache_clear()
     load_reference.cache_clear()

@@ -80,9 +80,13 @@ def _domain_age_weight(age_days: Optional[int]) -> int:
 
 def _scam_bucket(report: ScanReport) -> Tuple[int, Optional[str]]:
     """Score the raw scam/phishing heuristics into one capped bucket."""
+    # fuzzy lexical hits are candidate evidence — count at half weight so a
+    # soft match can never outrank an exact lexicon hit
     weights = [int(h.weight) if h.weight else _sev_weight(h.severity)
                for h in report.heuristics]
-    pts = _bucket_score(weights, RISK_CATEGORY_CAPS["scam"])
+    discounted = [w // 2 if h.category == "scam_phrase_fuzzy" else w
+                  for h, w in zip(report.heuristics, weights)]
+    pts = _bucket_score(discounted, RISK_CATEGORY_CAPS["scam"])
     if not pts:
         return 0, None
     return pts, f"Scam heuristics: {len(report.heuristics)} signal(s) (+{pts})"

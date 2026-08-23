@@ -23,6 +23,7 @@ from urllib.parse import urlparse
 from models import HeuristicHit, IngestedPage
 from modules.logging_setup import get_logger
 from modules.recon import knowledge_loader as kb
+from modules.recon import fuzzy_lexical
 
 log = get_logger("recon.heuristics")
 
@@ -266,6 +267,7 @@ def analyze_heuristics(page: IngestedPage) -> List[HeuristicHit]:
 
         credential_hits = _scan_credential_fields(dom)
         findings.extend(_scan_phrases(lowered))
+        findings.extend(fuzzy_lexical.scan_fuzzy_phrases(dom))
         findings.extend(_scan_regex(dom))
         findings.extend(_scan_obfuscation(dom))
         findings.extend(credential_hits)

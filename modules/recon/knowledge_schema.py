@@ -53,6 +53,14 @@ class LexiconEntry(_RuleBase):
     weight: StrictInt = 5
 
 
+class SoftLexiconEntry(_RuleBase):
+    """Fuzzy-matched scam phrase. Lower weight than exact lexicon by design."""
+    phrase: StrictStr
+    language: StrictStr = "en"
+    severity: StrictStr = "low"
+    weight: StrictInt = 3
+
+
 class RegexDetectorEntry(_RuleBase):
     category: StrictStr
     label: StrictStr

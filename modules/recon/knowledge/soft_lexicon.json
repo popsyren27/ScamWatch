@@ -1,0 +1,206 @@
+{
+  "schema_version": 1,
+  "knowledge_version": "2026.08.22.1",
+  "entries": [
+    {
+      "id": "soft.en.investment-returns",
+      "phrase": "guaranteed returns",
+      "language": "en",
+      "weight": 7,
+      "source": "manual",
+      "created": "2026-08-22"
+    },
+    {
+      "id": "soft.en.double-money",
+      "phrase": "double your money",
+      "language": "en",
+      "weight": 8,
+      "source": "manual",
+      "created": "2026-08-22"
+    },
+    {
+      "id": "soft.en.daily-payout",
+      "phrase": "daily payout",
+      "language": "en",
+      "weight": 5,
+      "source": "manual",
+      "created": "2026-08-22"
+    },
+    {
+      "id": "soft.en.no-investment-needed",
+      "phrase": "no investment needed",
+      "language": "en",
+      "weight": 6,
+      "source": "manual",
+      "created": "2026-08-22"
+    },
+    {
+      "id": "soft.en.verify-account-now",
+      "phrase": "verify your account now",
+      "language": "en",
+      "weight": 6,
+      "source": "manual",
+      "created": "2026-08-22"
+    },
+    {
+      "id": "soft.en.account-suspended",
+      "phrase": "account will be suspended",
+      "language": "en",
+      "weight": 6,
+      "source": "manual",
+      "created": "2026-08-22"
+    },
+    {
+      "id": "soft.en.claim-reward",
+      "phrase": "claim your reward",
+      "language": "en",
+      "weight": 4,
+      "source": "manual",
+      "created": "2026-08-22"
+    },
+    {
+      "id": "soft.en.limited-slots",
+      "phrase": "limited slots only",
+      "language": "en",
+      "weight": 4,
+      "source": "manual",
+      "created": "2026-08-22"
+    },
+    {
+      "id": "soft.tl.pera-galing",
+      "phrase": "pera galing",
+      "language": "tl",
+      "weight": 5,
+      "source": "manual",
+      "created": "2026-08-22"
+    },
+    {
+      "id": "soft.tl.libre-ng-pera",
+      "phrase": "libreng pera",
+      "language": "tl",
+      "weight": 7,
+      "source": "manual",
+      "created": "2026-08-22"
+    },
+    {
+      "id": "soft.tl.paraan-kumita",
+      "phrase": "paraan kumita",
+      "language": "tl",
+      "weight": 5,
+      "source": "manual",
+      "created": "2026-08-22"
+    },
+    {
+      "id": "soft.tl.mabilis-kita",
+      "phrase": "mabilis na kita",
+      "language": "tl",
+      "weight": 6,
+      "source": "manual",
+      "created": "2026-08-22"
+    },
+    {
+      "id": "soft.tl.walang-capital",
+      "phrase": "walang puhunan",
+      "language": "tl",
+      "weight": 6,
+      "source": "manual",
+      "created": "2026-08-22"
+    },
+    {
+      "id": "soft.tl.i-withdraw-na",
+      "phrase": "i withdraw na",
+      "language": "tl",
+      "weight": 5,
+      "source": "manual",
+      "created": "2026-08-22"
+    },
+    {
+      "id": "soft.tl.mag-register-lang",
+      "phrase": "mag register lang",
+      "language": "tl",
+      "weight": 4,
+      "source": "manual",
+      "created": "2026-08-22"
+    },
+    {
+      "id": "soft.tl.pa-like-share",
+      "phrase": "like and share para",
+      "language": "tl",
+      "weight": 5,
+      "source": "manual",
+      "created": "2026-08-22"
+    },
+    {
+      "id": "soft.en.cashout",
+      "phrase": "cashout",
+      "language": "en",
+      "weight": 3,
+      "source": "manual",
+      "created": "2026-08-23"
+    },
+    {
+      "id": "soft.en.payouts",
+      "phrase": "payouts",
+      "language": "en",
+      "weight": 2,
+      "source": "manual",
+      "created": "2026-08-23"
+    },
+    {
+      "id": "soft.en.withdrawable",
+      "phrase": "withdrawable",
+      "language": "en",
+      "weight": 3,
+      "source": "manual",
+      "created": "2026-08-23"
+    },
+    {
+      "id": "soft.en.referral-bonus",
+      "phrase": "referral",
+      "language": "en",
+      "weight": 2,
+      "source": "manual",
+      "created": "2026-08-23"
+    },
+    {
+      "id": "soft.en.unli",
+      "phrase": "unli",
+      "language": "en",
+      "weight": 2,
+      "source": "manual",
+      "created": "2026-08-23"
+    },
+    {
+      "id": "soft.tl.kita",
+      "phrase": "kumita",
+      "language": "tl",
+      "weight": 3,
+      "source": "manual",
+      "created": "2026-08-23"
+    },
+    {
+      "id": "soft.tl.puhunan",
+      "phrase": "puhunan",
+      "language": "tl",
+      "weight": 3,
+      "source": "manual",
+      "created": "2026-08-23"
+    },
+    {
+      "id": "soft.tl.padala",
+      "phrase": "padala",
+      "language": "tl",
+      "weight": 2,
+      "source": "manual",
+      "created": "2026-08-23"
+    },
+    {
+      "id": "soft.tl.paabot",
+      "phrase": "paabot",
+      "language": "tl",
+      "weight": 2,
+      "source": "manual",
+      "created": "2026-08-23"
+    }
+  ]
+}

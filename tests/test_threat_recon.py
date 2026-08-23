@@ -20,6 +20,7 @@ from models import (  # noqa: E402
     ScanReport, SecurityFinding, ThreatIntelHit, VisualMatch,
 )
 from modules.recon import heuristics, intel, risk, security_headers, visual  # noqa: E402
+from modules.recon import fuzzy_lexical  # noqa: E402
 from modules import evidence, store  # noqa: E402
 
 
@@ -106,6 +107,40 @@ class TestScamHeuristics(unittest.TestCase):
     def test_url_anomaly_at_sign(self):
         hits = heuristics.analyze_heuristics(_page(dom="hello", url="https://bank.com@evil.test/login"))
         self.assertTrue(any(h.category == "url_anomaly" for h in hits))
+
+
+class TestFuzzyLexical(unittest.TestCase):
+    def test_normalize_folds_homoglyphs_and_punct(self):
+        from modules.recon.fuzzy_lexical import normalize_text
+        self.assertEqual(normalize_text("Guаranteed   Returns!!"), "guaranteed returns")
+        self.assertEqual(normalize_text("ｌｉｂｒｅｎｇ ｐｅｒａ"), "libreng pera")
+
+    def test_exact_soft_phrase_matches(self):
+        hits = fuzzy_lexical.scan_fuzzy_phrases("<p>Get guaranteed returns today!</p>")
+        self.assertTrue(any(h.rule_id == "soft.en.investment-returns" for h in hits))
+
+    def test_homoglyph_evasion_still_matches(self):
+        # Cyrillic 'а' in "guaranteed"
+        dom = "G\u0443aranteed returns for everyone"
+        hits = fuzzy_lexical.scan_fuzzy_phrases(dom)
+        self.assertTrue(any(h.rule_id == "soft.en.investment-returns" for h in hits))
+
+    def test_fuzzy_variant_matches(self):
+        hits = fuzzy_lexical.scan_fuzzy_phrases("<p>guaranteed returnss now</p>")
+        self.assertTrue(any(h.rule_id == "soft.en.investment-returns" for h in hits))
+
+    def test_benign_text_no_match(self):
+        hits = fuzzy_lexical.scan_fuzzy_phrases("<p>Quarterly earnings report and dividend policy.</p>")
+        self.assertEqual(hits, [])
+
+    def test_fuzzy_hits_scored_below_exact(self):
+        exact = _report(heuristics=[HeuristicHit(category="scam_investment", detail="x",
+                        severity="high", weight=14)])
+        fuzzy = _report(heuristics=[HeuristicHit(category="scam_phrase_fuzzy", detail="x",
+                        severity="low", weight=7)])
+        exact.risk = risk.assess_risk(exact)
+        fuzzy.risk = risk.assess_risk(fuzzy)
+        self.assertLess(fuzzy.risk.score, exact.risk.score)
 
 
 class TestSecurityExposure(unittest.TestCase):
@@ -266,6 +301,7 @@ class TestKnowledgeSchema(unittest.TestCase):
                          '{"id": "lex.off", "category": "payment", "phrase": "activation fee", '
                          '"severity": "high", "weight": 12, "enabled": false}]}')
             kb.clear_cache()
+            os.environ["HEURISTICS_KNOWLEDGE_DIR"] = d
             try:
                 hits = heuristics.analyze_heuristics(_page(dom="act now! activation fee!"))
                 cats = {h.rule_id for h in hits}
@@ -273,6 +309,7 @@ class TestKnowledgeSchema(unittest.TestCase):
                 self.assertNotIn("lex.off", cats)
             finally:
                 kb.clear_cache()
+                del os.environ["HEURISTICS_KNOWLEDGE_DIR"]
 
     def test_hits_carry_rule_ids(self):
         dom = "double your money today"
