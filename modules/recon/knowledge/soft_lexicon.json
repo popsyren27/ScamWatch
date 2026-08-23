@@ -139,32 +139,32 @@
       "created": "2026-08-23"
     },
     {
-      "id": "soft.en.payouts",
-      "phrase": "payouts",
+      "id": "soft.en.payout",
+      "phrase": "payout",
       "language": "en",
       "weight": 2,
       "source": "manual",
       "created": "2026-08-23"
     },
     {
-      "id": "soft.en.withdrawable",
-      "phrase": "withdrawable",
+      "id": "soft.en.withdraw",
+      "phrase": "withdraw",
       "language": "en",
       "weight": 3,
       "source": "manual",
       "created": "2026-08-23"
     },
     {
-      "id": "soft.en.referral-bonus",
-      "phrase": "referral",
+      "id": "soft.en.refer-bonus",
+      "phrase": "refer",
       "language": "en",
       "weight": 2,
       "source": "manual",
       "created": "2026-08-23"
     },
     {
-      "id": "soft.en.unli",
-      "phrase": "unli",
+      "id": "soft.en.loan",
+      "phrase": "loan",
       "language": "en",
       "weight": 2,
       "source": "manual",
@@ -179,24 +179,24 @@
       "created": "2026-08-23"
     },
     {
-      "id": "soft.tl.puhunan",
-      "phrase": "puhunan",
+      "id": "soft.tl.payment",
+      "phrase": "payment",
       "language": "tl",
       "weight": 3,
       "source": "manual",
       "created": "2026-08-23"
     },
     {
-      "id": "soft.tl.padala",
-      "phrase": "padala",
+      "id": "soft.tl.claim",
+      "phrase": "claim",
       "language": "tl",
       "weight": 2,
       "source": "manual",
       "created": "2026-08-23"
     },
     {
-      "id": "soft.tl.paabot",
-      "phrase": "paabot",
+      "id": "soft.tl.prize",
+      "phrase": "prize",
       "language": "tl",
       "weight": 2,
       "source": "manual",
