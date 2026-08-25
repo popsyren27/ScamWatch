@@ -143,6 +143,139 @@ class TestFuzzyLexical(unittest.TestCase):
         self.assertLess(fuzzy.risk.score, exact.risk.score)
 
 
+class TestPageFeatures(unittest.TestCase):
+    def test_forms_links_scripts_extracted_once(self):
+        from modules.recon.features import extract_page_features
+        dom = ('<title>Free GCash</title>'
+               '<form action="https://evil.test/c.php" method="post">'
+               '<input type="password" name="mpin"></form>'
+               '<a href="/ok">internal</a><a href="https://other.test/x">out</a>'
+               '<script src="/app.js"></script>'
+               '<iframe src="https://frame.test/f"></iframe>'
+               '<span style="display:none">verify your account now</span>')
+        page = _page(dom=dom, url="https://promo.example/")
+        f = extract_page_features(page)
+        self.assertEqual(f.title, "Free GCash")
+        self.assertEqual(len(f.forms), 1)
+        self.assertTrue(f.forms[0].external_action)
+        self.assertTrue(f.forms[0].has_password)
+        self.assertIn("mpin", f.forms[0].input_hints)
+        self.assertEqual(sum(1 for l in f.links if l.external), 1)
+        self.assertEqual(f.scripts, ["/app.js"])
+        self.assertTrue(any("frame.test" in i for i in f.iframes))
+        self.assertTrue(any("display" in c or "verify" in c for c in f.hidden_text_chunks))
+
+    def test_payment_and_phone_extraction(self):
+        from modules.recon.features import extract_page_features
+        dom = "<p>Send to GCash 09171234567 or wallet bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh</p>"
+        f = extract_page_features(_page(dom=dom, url="https://pay.example/"))
+        kinds = {p.kind for p in f.payment_destinations}
+        self.assertIn("gcash", kinds)
+        self.assertIn("wallet_btc", kinds)
+        self.assertIn("09171234567", f.phone_numbers)
+
+    def test_brand_mentions(self):
+        from modules.recon.features import extract_page_features
+        f = extract_page_features(_page(dom="<p>Official Gcash promo</p>", url="https://b.example/"))
+        self.assertIn("gcash", f.brand_mentions)
+
+    def test_empty_dom_gives_url_only(self):
+        from modules.recon.features import extract_page_features
+        f = extract_page_features(_page(dom="", url="https://empty.example/"))
+        self.assertEqual(f.hostname, "empty.example")
+        self.assertEqual(f.forms, [])
+
+
+class TestUrlFeatures(unittest.TestCase):
+    def test_structural_signals(self):
+        from modules.recon.url_features import extract_url_features
+        u = extract_url_features("https://secure.login.gcash-pay.top/verify/account?id=1&ref=2")
+        self.assertGreaterEqual(u.subdomain_depth, 4)
+        self.assertGreaterEqual(u.hyphen_count, 1)
+        self.assertIn("verify", u.suspicious_path_words)
+        self.assertEqual(u.query_param_count, 2)
+
+    def test_punycode_detected(self):
+        from modules.recon.url_features import extract_url_features
+        u = extract_url_features("https://xn--gcash-3we.com/login")
+        self.assertTrue(u.is_punycode)
+
+    def test_typo_squat_lookalike(self):
+        from modules.recon.url_features import extract_url_features
+        u = extract_url_features("https://gcahs.com/login")
+        self.assertEqual(u.brand_lookalike_of, "gcash")
+        self.assertIsNotNone(u.brand_lookalike_distance)
+
+    def test_legit_domain_not_flagged(self):
+        from modules.recon.url_features import extract_url_features
+        u = extract_url_features("https://wikipedia.org/wiki/Entropy")
+        self.assertIsNone(u.brand_lookalike_of)
+
+    def test_ip_host(self):
+        from modules.recon.url_features import extract_url_features
+        u = extract_url_features("http://192.168.1.10/x")
+        self.assertTrue(u.has_ip_host)
+
+
+class TestVisualUpgrades(unittest.TestCase):
+    def test_tile_hashing_returns_hashes(self):
+        from modules.recon.visual import _tile_hashes
+        # create a simple test image
+        from PIL import Image
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
+            img = Image.new("RGB", (300, 200), color="red")
+            img.save(f.name)
+            hashes = _tile_hashes(f.name)
+            self.assertEqual(len(hashes), 9)  # 3x3 grid
+            self.assertTrue(all(isinstance(h, int) for h in hashes))
+
+    def test_versioned_brand_refs_layout(self):
+        from modules.recon.visual import _reference_images, _brand_and_version
+        from pathlib import Path
+        import tempfile
+        import config
+        with tempfile.TemporaryDirectory() as d:
+            ref_dir = Path(d)
+            (ref_dir / "gcash.png").write_bytes(b"x")
+            (ref_dir / "maya").mkdir()
+            (ref_dir / "maya" / "2026.08.png").write_bytes(b"y")
+            # temporarily override the config constant
+            old = config.VISUAL_REFERENCE_DIR
+            config.VISUAL_REFERENCE_DIR = str(ref_dir)
+            try:
+                refs = _reference_images()
+                self.assertEqual(len(refs), 2)
+                brand, ver = _brand_and_version(refs[0])
+                self.assertEqual(brand, "gcash")
+                self.assertEqual(ver, "flat")
+                brand, ver = _brand_and_version(refs[1])
+                self.assertEqual(brand, "maya")
+                self.assertEqual(ver, "2026.08")
+            finally:
+                config.VISUAL_REFERENCE_DIR = old
+
+    def test_svg_canvas_text_extraction(self):
+        from modules.recon.features import _svg_and_canvas_text
+        dom = ('<svg><text x="10" y="20">Verify your account now</text></svg>'
+               '<script>ctx.fillText("Double your money", 50, 50);</script>')
+        chunks = _svg_and_canvas_text(dom)
+        self.assertIn("Verify your account now", chunks)
+        self.assertIn("Double your money", chunks)
+
+    def test_ocr_text_feeds_lexical(self):
+        from modules.recon.heuristics import analyze_heuristics
+        from modules.recon.features import PageFeatures, FormFeature
+        from models import IngestedPage
+        page = IngestedPage(final_url="https://x.test/", http_status=200,
+                            dom_html="<p>hello</p>", screenshot_path=None)
+        # features with OCR text containing a soft-lexicon phrase
+        features = PageFeatures(url="https://x.test/", hostname="x.test",
+                                ocr_text="Get guaranteed returns today!")
+        hits = analyze_heuristics(page, features)
+        self.assertTrue(any(h.rule_id == "soft.en.investment-returns" for h in hits))
+
+
 class TestSecurityExposure(unittest.TestCase):
     def test_secret_and_cors_and_form(self):
         dom = ('<script>var k="AKIAIOSFODNN7EXAMPLE";</script>'

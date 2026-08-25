@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "knowledge_version": "2026.08.22.1",
+  "knowledge_version": "2026.08.23.1",
   "entries": [
     {
       "category": "investment",
@@ -430,6 +430,58 @@
       "enabled": true,
       "created": "2026-08-22",
       "updated": "2026-08-22"
+    },
+    {
+      "category": "reward",
+      "phrase": "gcash gift voucher",
+      "severity": "high",
+      "weight": 12,
+      "id": "lex.gcash-gift-voucher",
+      "version": 1,
+      "source": "confirmed-scam-sample",
+      "confidence": 0.9,
+      "enabled": true,
+      "created": "2026-08-23",
+      "updated": "2026-08-23"
+    },
+    {
+      "category": "reward",
+      "phrase": "gcash reward",
+      "severity": "medium",
+      "weight": 8,
+      "id": "lex.gcash-reward",
+      "version": 1,
+      "source": "confirmed-scam-sample",
+      "confidence": 0.85,
+      "enabled": true,
+      "created": "2026-08-23",
+      "updated": "2026-08-23"
+    },
+    {
+      "category": "reward",
+      "phrase": "fill up the form to get",
+      "severity": "medium",
+      "weight": 7,
+      "id": "lex.fill-up-the-form-to-get",
+      "version": 1,
+      "source": "confirmed-scam-sample",
+      "confidence": 0.8,
+      "enabled": true,
+      "created": "2026-08-23",
+      "updated": "2026-08-23"
+    },
+    {
+      "category": "reward",
+      "phrase": "one-time promotional offer",
+      "severity": "low",
+      "weight": 5,
+      "id": "lex.one-time-promotional-offer",
+      "version": 1,
+      "source": "confirmed-scam-sample",
+      "confidence": 0.75,
+      "enabled": true,
+      "created": "2026-08-23",
+      "updated": "2026-08-23"
     },
     {
       "category": "reward",

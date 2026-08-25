@@ -159,6 +159,17 @@ def _intel_bucket(report: ScanReport) -> Tuple[int, Optional[str]]:
     return pts, f"Intelligence ({', '.join(bits)}): (+{pts})"
 
 
+def _campaign_bucket(report: ScanReport) -> Tuple[int, Optional[str]]:
+    """Risk inherited from a known-bad campaign this domain clusters with."""
+    if not report.campaign or report.campaign.inherited_points <= 0:
+        return 0, None
+    pts = report.campaign.inherited_points
+    c = report.campaign
+    line = (f"Campaign #{c.campaign_id}: {c.bad_member_count} of "
+            f"{c.member_count} related domain(s) flagged (+{pts})")
+    return pts, line
+
+
 def _phishing_driver(report: ScanReport) -> Optional[str]:
     """One-liner if we saw active phishing / credential harvesting signals."""
     hits = [h for h in report.heuristics if h.category in _PHISHING_CATEGORIES]
@@ -242,13 +253,15 @@ def assess_risk(report: ScanReport) -> RiskAssessment:
         exp_pts, exp_line = _exposure_bucket(exposures)
 
         intel_pts, intel_line = _intel_bucket(report)
+        camp_pts, camp_line = _campaign_bucket(report)
 
         contributions.extend(line for line in
-                              (scam_line, cve_line, mis_line, pos_line, exp_line, intel_line)
+                              (scam_line, cve_line, mis_line, pos_line, exp_line,
+                               intel_line, camp_line)
                               if line)
 
         score = max(0, min(100, scam_pts + cve_pts + mis_pts + pos_pts
-                            + exp_pts + intel_pts))
+                            + exp_pts + intel_pts + camp_pts))
         level = _band(score)
         summary = _summarise(level, report, len(exposed), len(exposures))
 

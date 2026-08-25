@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "knowledge_version": "2026.08.22.1",
+  "knowledge_version": "2026.08.23.1",
   "entries": [
     {
       "category": "fake_gateway",
@@ -180,7 +180,35 @@
       "confidence": 0.8,
       "enabled": true,
       "created": "2026-08-22",
-      "updated": "2026-08-22"
-    }
+      "updated": "2026-08-22"    },
+    {
+      "category": "fake_gateway",
+      "label": "Financial-brand support address on a free mail provider",
+      "severity": "high",
+      "weight": 14,
+      "pattern": "\\b(?:gcash|maya|paymaya|bpi|bdo|unionbank|metrobank|landbank)[\\w.-]*@(?:gmail|yahoo|hotmail|outlook)\\.(?:com|co[._]\\w{2,})",
+      "ignore_case": true,
+      "id": "regex.financial-brand-support-address-on-a-free-mail-provider",
+      "version": 1,
+      "source": "confirmed-scam-sample",
+      "confidence": 0.9,
+      "enabled": true,
+      "created": "2026-08-23",
+      "updated": "2026-08-23"
+    },
+    {
+      "category": "reward",
+      "label": "Balance-tier reward ladder (deposit more, win more)",
+      "severity": "high",
+      "weight": 12,
+      "pattern": "(?:balance|load)\\D{0,15}\\d[\\d,]*\\s*\\+?\\D{0,10}?(?:receive|get|claim)|(?:[₱p]?\\s?\\d[\\d,]*\\s*\\+?)\\s*(?:balance|load)\\D{0,15}(?:receive|get|claim)",
+      "ignore_case": true,
+      "id": "regex.balance-tier-reward-ladder-deposit-more-win-more",
+      "version": 1,
+      "source": "confirmed-scam-sample",
+      "confidence": 0.85,
+      "enabled": true,
+      "created": "2026-08-23",
+      "updated": "2026-08-23"    }
   ]
 }

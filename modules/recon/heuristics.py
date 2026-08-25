@@ -17,10 +17,10 @@ TODO:
 from __future__ import annotations
 
 import re
-from typing import List
+from typing import List, Optional
 from urllib.parse import urlparse
 
-from models import HeuristicHit, IngestedPage
+from models import HeuristicHit, IngestedPage, PageFeatures
 from modules.logging_setup import get_logger
 from modules.recon import knowledge_loader as kb
 from modules.recon import fuzzy_lexical
@@ -254,8 +254,13 @@ def _dedupe(hits: List[HeuristicHit]) -> List[HeuristicHit]:
     return unique
 
 
-def analyze_heuristics(page: IngestedPage) -> List[HeuristicHit]:
-    """Run all passive scam heuristics over the ingested evidence."""
+def analyze_heuristics(page: IngestedPage,
+                       features: Optional[PageFeatures] = None) -> List[HeuristicHit]:
+    """Run all passive scam heuristics over the ingested evidence.
+
+    When a shared PageFeatures object is supplied, credential-field detection
+    reads from it instead of re-parsing the DOM.
+    """
     findings: List[HeuristicHit] = []
     try:
         dom = page.dom_html or ""
@@ -265,12 +270,58 @@ def analyze_heuristics(page: IngestedPage) -> List[HeuristicHit]:
         if page.screenshot_path:
             findings.extend(_scan_qr(page.screenshot_path))
 
-        credential_hits = _scan_credential_fields(dom)
+        if features is not None:
+            credential_hits = []
+            for form in features.forms:
+                if form.has_password:
+                    credential_hits.append(HeuristicHit(category="credential_harvest",
+                        rule_id="ref.credential-hint-high",
+                        detail="Password input field present.",
+                        evidence=form.action[:120], severity="high", weight=12))
+                for hint in form.input_hints:
+                    rule_id = ("ref.credential-hint-high"
+                               if hint in _HIGH_SEVERITY_CREDENTIAL_HINTS
+                               else "ref.credential-hint")
+                    sev, wt = ("high", 14) if hint in _HIGH_SEVERITY_CREDENTIAL_HINTS else ("medium", 8)
+                    credential_hits.append(HeuristicHit(category="credential_harvest",
+                        rule_id=rule_id,
+                        detail=f"Sensitive input field collecting '{hint}'.",
+                        evidence=hint, severity=sev, weight=wt))
+        else:
+            credential_hits = _scan_credential_fields(dom)
+
         findings.extend(_scan_phrases(lowered))
         findings.extend(fuzzy_lexical.scan_fuzzy_phrases(dom))
         findings.extend(_scan_regex(dom))
         findings.extend(_scan_obfuscation(dom))
         findings.extend(credential_hits)
+
+        # text rendered as an image dodges DOM extraction — OCR the screenshot
+        # and run the same lexical layers over it
+        ocr_text = features.ocr_text if features is not None else ""
+        if not ocr_text and page.screenshot_path:
+            from modules.recon.features import extract_ocr_text
+            ocr_text = extract_ocr_text(page.screenshot_path)
+        if ocr_text:
+            findings.extend(_scan_phrases(ocr_text.lower()))
+            findings.extend(fuzzy_lexical.scan_fuzzy_phrases(ocr_text))
+
+        if features is not None and features.hidden_text_chunks:
+            joined = " ".join(features.hidden_text_chunks).lower()
+            findings.append(HeuristicHit(category="hidden_content", rule_id="feat.hidden-content",
+                detail=f"CSS-hidden text present ({len(features.hidden_text_chunks)} chunk(s)) "
+                       "— content invisible to users but visible to scanners.",
+                evidence=joined[:200], severity="medium", weight=8))
+
+        if features is not None and features.svg_canvas_text:
+            joined = " ".join(features.svg_canvas_text)
+            findings.append(HeuristicHit(category="rendered_text", rule_id="feat.svg-canvas-text",
+                detail=f"Text drawn via SVG/canvas ({len(features.svg_canvas_text)} chunk(s)) "
+                       "— dodges plain DOM text extraction.",
+                evidence=joined[:200], severity="low", weight=4))
+            findings.extend(_scan_phrases(joined.lower()))
+            findings.extend(fuzzy_lexical.scan_fuzzy_phrases(joined))
+
         findings.extend(_scan_brand_and_domain(lowered, host,
                                                has_credential_form=bool(credential_hits)))
         findings.extend(_scan_url_anomalies(page.final_url or "", host))

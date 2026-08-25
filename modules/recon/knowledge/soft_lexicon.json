@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "knowledge_version": "2026.08.22.1",
+  "knowledge_version": "2026.08.23.1",
   "entries": [
     {
       "id": "soft.en.investment-returns",
@@ -65,6 +65,30 @@
       "weight": 4,
       "source": "manual",
       "created": "2026-08-22"
+    },
+    {
+      "id": "soft.en.gcash-gift-voucher",
+      "phrase": "gcash gift voucher",
+      "language": "en",
+      "weight": 8,
+      "source": "confirmed-scam-sample",
+      "created": "2026-08-23"
+    },
+    {
+      "id": "soft.en.work-from-home-under-your-own-terms",
+      "phrase": "work from home under your own terms",
+      "language": "en",
+      "weight": 6,
+      "source": "confirmed-scam-sample",
+      "created": "2026-08-23"
+    },
+    {
+      "id": "soft.en.gcass-account-is-active",
+      "phrase": "account is active in order to receive",
+      "language": "en",
+      "weight": 5,
+      "source": "confirmed-scam-sample",
+      "created": "2026-08-23"
     },
     {
       "id": "soft.tl.pera-galing",

@@ -76,6 +76,76 @@ class IngestedPage(_StrictModel):
 
 
 # --------------------------------------------------------------------------
+# Phase 3 — Shared extracted features (one normalization pass, many consumers)
+# --------------------------------------------------------------------------
+class FormFeature(_StrictModel):
+    """One <form> with the input hints it collects."""
+
+    action: StrictStr = ""
+    method: StrictStr = ""
+    external_action: StrictBool = False   # posts somewhere off the scanned host
+    input_hints: List[str] = Field(default_factory=list)  # password/mpin/otp/card...
+    has_password: StrictBool = False
+
+
+class LinkFeature(_StrictModel):
+    href: StrictStr
+    external: StrictBool = False
+    text: StrictStr = ""
+
+
+class PaymentDestination(_StrictModel):
+    kind: StrictStr          # "gcash", "maya", "wallet_btc", "wallet_eth", ...
+    value: StrictStr
+    source: StrictStr = ""   # where it was seen: "dom", "qr", "ocr"
+
+
+class PageFeatures(_StrictModel):
+    """Extracted once from IngestedPage + URL, handed to every detector.
+
+    The point of this object is that heuristics/security/techstack/visual stop
+    re-parsing the same DOM independently. Consumers read fields; they never
+    re-run BeautifulSoup on raw HTML.
+    """
+
+    url: StrictStr = ""
+    hostname: StrictStr = ""
+    registrable_domain: StrictStr = ""
+    title: StrictStr = ""
+    visible_text: StrictStr = ""
+    language: StrictStr = ""              # best-effort ("en", "tl", ...)
+    forms: List[FormFeature] = Field(default_factory=list)
+    links: List[LinkFeature] = Field(default_factory=list)
+    scripts: List[str] = Field(default_factory=list)      # script src URLs
+    iframes: List[str] = Field(default_factory=list)      # iframe src URLs
+    brand_mentions: List[str] = Field(default_factory=list)
+    payment_destinations: List[PaymentDestination] = Field(default_factory=list)
+    phone_numbers: List[str] = Field(default_factory=list)
+    hidden_text_chunks: List[str] = Field(default_factory=list)  # CSS-hidden content
+    svg_canvas_text: List[str] = Field(default_factory=list)     # <svg><text> / fillText
+    ocr_text: StrictStr = ""
+    redirect_chain: List[str] = Field(default_factory=list)
+
+
+class UrlFeatures(_StrictModel):
+    """Structural URL/domain signals computed once per scan target."""
+
+    url: StrictStr = ""
+    hostname: StrictStr = ""
+    registrable_domain: StrictStr = ""
+    subdomain_depth: StrictInt = 0
+    hyphen_count: StrictInt = 0
+    is_punycode: StrictBool = False
+    url_entropy: float = 0.0
+    path_depth: StrictInt = 0
+    suspicious_path_words: List[str] = Field(default_factory=list)
+    query_param_count: StrictInt = 0
+    has_ip_host: StrictBool = False
+    brand_lookalike_of: Optional[StrictStr] = None   # closest brand within edit distance
+    brand_lookalike_distance: Optional[StrictInt] = None
+
+
+# --------------------------------------------------------------------------
 # Phase 3 — Findings
 # --------------------------------------------------------------------------
 class TechFingerprint(_StrictModel):
@@ -183,6 +253,17 @@ class VisualMatch(_StrictModel):
     detail: StrictStr = ""
 
 
+class CampaignMatch(_StrictModel):
+    """Result of clustering this domain's infrastructure with known scans."""
+
+    campaign_id: StrictInt
+    member_count: StrictInt = 0
+    bad_member_count: StrictInt = 0
+    shared_keys: List[str] = Field(default_factory=list)
+    inherited_points: StrictInt = 0   # risk points inherited from bad members
+    summary: StrictStr = ""
+
+
 class RiskAssessment(_StrictModel):
     """Aggregate, weighted verdict synthesised from every finding category."""
 
@@ -204,6 +285,8 @@ class ScanReport(_StrictModel):
     knowledge_version: StrictStr = ""  # knowledge state used for this scan
     proxy: Optional[ProxyIdentity] = None
     page: Optional[IngestedPage] = None
+    features: Optional[PageFeatures] = None
+    url_features: Optional[UrlFeatures] = None
     tech_stack: List[TechFingerprint] = Field(default_factory=list)
     cves: List[CveRecord] = Field(default_factory=list)
     heuristics: List[HeuristicHit] = Field(default_factory=list)
@@ -212,6 +295,7 @@ class ScanReport(_StrictModel):
     intel: Optional[DomainIntel] = None
     threat_intel: List[ThreatIntelHit] = Field(default_factory=list)
     visual_matches: List[VisualMatch] = Field(default_factory=list)
+    campaign: Optional[CampaignMatch] = None
     risk: Optional[RiskAssessment] = None
     evidence_sha256: Dict[str, str] = Field(default_factory=dict)
     diff_summary: List[str] = Field(default_factory=list)

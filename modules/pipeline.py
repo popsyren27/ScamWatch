@@ -27,7 +27,9 @@ from modules.proxy.tor_manager import (
     AnonymityError, acquire_anonymous_identity, local_identity,
 )
 from modules.recon import knowledge_loader as kb
+from modules.recon.campaign import correlate_campaign
 from modules.recon.cve import cross_reference_cves
+from modules.recon.features import extract_page_features, extract_ocr_text
 from modules.recon.heuristics import analyze_heuristics
 from modules.recon.intel import gather_intel
 from modules.recon.misconfig import check_misconfigurations
@@ -35,6 +37,7 @@ from modules.recon.risk import assess_risk
 from modules.recon.security_headers import audit_security
 from modules.recon.techstack import map_tech_stack
 from modules.recon.threatintel import check_threat_intel
+from modules.recon.url_features import extract_url_features
 from modules.recon.visual import assess_visual
 from modules.report.generator import generate_reports
 from modules.store import diff_against_previous, save_scan
@@ -115,19 +118,38 @@ async def run_scan(target_url: StrictStr, status_hook: StatusHook = None,
     _emit(status_hook, report, ScanStatus.INGEST)
     try:
         report.page = await ingest_target(target_url, direct=effective_direct)
+        if report.page.http_status == 0 and not (report.page.dom_html or "").strip():
+            report.errors.append(
+                "Ingestion returned no content (page never loaded). Scam heuristics "
+                "and content analysis ran against nothing — treat this scan as "
+                "inconclusive, not clean.")
+            log.error("Ingestion produced no content for %s", target_url)
     except Exception as exc:
         report.errors.append(f"Ingestion failed: {exc}")
         log.error("Ingestion failed: %s", exc)
 
-    # ---- Phase 3a: Heuristics --------------------------------------------
+    # ---- Phase 3a: Shared feature extraction (one pass, many consumers) ---
+    if report.page is not None:
+        try:
+            report.features = extract_page_features(report.page)
+            if report.page.screenshot_path:
+                report.features.ocr_text = extract_ocr_text(report.page.screenshot_path)
+        except Exception as exc:
+            report.errors.append(f"Feature extraction failed: {exc}")
+    try:
+        report.url_features = extract_url_features(target_url)
+    except Exception as exc:
+        report.errors.append(f"URL feature extraction failed: {exc}")
+
+    # ---- Phase 3b: Heuristics --------------------------------------------
     _emit(status_hook, report, ScanStatus.HEURISTICS)
     if report.page is not None:
         try:
-            report.heuristics = analyze_heuristics(report.page)
+            report.heuristics = analyze_heuristics(report.page, report.features)
         except Exception as exc:
             report.errors.append(f"Heuristics failed: {exc}")
 
-    # ---- Phase 3b: Vulnerabilities ---------------------------------------
+    # ---- Phase 3c: Vulnerabilities ---------------------------------------
     _emit(status_hook, report, ScanStatus.VULN)
     if report.page is not None:
         try:
@@ -169,6 +191,13 @@ async def run_scan(target_url: StrictStr, status_hook: StatusHook = None,
             report.visual_matches = assess_visual(report.page.screenshot_path)
         except Exception as exc:
             report.errors.append(f"Visual matching failed: {exc}")
+
+    # ---- Phase 3f: Campaign correlation (before scoring, so inherited risk counts)
+    if report.intel is not None:
+        try:
+            report.campaign = correlate_campaign(report)
+        except Exception as exc:
+            report.errors.append(f"Campaign correlation failed: {exc}")
 
     # ---- Phase 3e: Risk synthesis (aggregate weighted verdict) -----------
     _emit(status_hook, report, ScanStatus.SCORING)

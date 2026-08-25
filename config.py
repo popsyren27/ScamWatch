@@ -44,6 +44,19 @@ TOR_NEWNYM_SETTLE_SECONDS: Final[float] = 5.0
 PAGE_TIMEOUT_MS: Final[int] = 15_000
 NAV_TIMEOUT_MS: Final[int] = 15_000
 
+# Second-chance render for slow sites (Tor circuits are slow): a much longer
+# navigation timeout plus extra idle wait before giving up on the browser.
+NAV_RETRY_TIMEOUT_MS: Final[int] = 60_000
+NAV_RETRY_SETTLE_MS: Final[int] = 20_000
+
+# Full-page copies (DOM + request log) kept here for training/regression use.
+SITE_ARCHIVE_DIR: Final[str] = "artifacts/site_archive"
+
+# LAST-resort ingestion: fetch a remote target WITHOUT Tor if every Tor-routed
+# attempt failed. This EXPOSES THE OPERATOR'S REAL IP TO THE TARGET — flip to
+# False to keep the anonymity guarantee absolute.
+ALLOW_NON_TOR_FALLBACK: Final[bool] = True
+
 # A benign, common desktop UA. We're passive observers — this isn't to evade
 # detection, just to receive the same DOM a normal visitor would.
 USER_AGENT: Final[str] = (
@@ -160,7 +173,15 @@ THREATINTEL_HIT_WEIGHT: Final[int] = 28
 VISUAL_REFERENCE_DIR: Final[str] = "brand_refs"
 # Hamming-distance threshold over a 64-bit dHash; <= this counts as a match.
 VISUAL_HASH_THRESHOLD: Final[int] = 12
+# Region (tile) hashes use a tighter threshold — a small crop matching is a
+# stronger, more localized signal than a whole-page resemblance.
+VISUAL_TILE_HASH_THRESHOLD: Final[int] = 6
+# Screenshot is split into this many tiles per axis (N x N grid).
+VISUAL_TILE_GRID: Final[int] = 3
 VISUAL_MATCH_WEIGHT: Final[int] = 16
+# A tile-only match (login widget copied, layout changed) scores lower than
+# a full-page match but still stacks with other signals.
+VISUAL_TILE_MATCH_WEIGHT: Final[int] = 9
 
 # --------------------------------------------------------------------------
 # Case persistence
@@ -170,6 +191,18 @@ CASE_DB_PATH: Final[str] = "artifacts/cases.db"
 
 # Risk bucket cap for intelligence signals (domain age + threat-intel + visual).
 RISK_INTEL_CAP: Final[int] = 45
+
+# --------------------------------------------------------------------------
+# Phase 5 — Campaign correlation (infrastructure clustering)
+# --------------------------------------------------------------------------
+# SQLite store of per-domain infrastructure keys + verdicts, used to cluster
+# related sites into campaigns and let new domains inherit campaign risk.
+CAMPAIGN_DB_PATH: Final[str] = "artifacts/campaigns.db"
+# Points a domain inherits from a known-bad campaign it clusters with. Scaled
+# by the fraction of the campaign that is flagged; hard-capped so one huge bad
+# campaign can't single-handedly condemn an unrelated-looking page.
+CAMPAIGN_INHERIT_WEIGHT: Final[int] = 18
+CAMPAIGN_INHERIT_CAP: Final[int] = 25
 
 # --------------------------------------------------------------------------
 # Phase 4 — Localhost GUI
