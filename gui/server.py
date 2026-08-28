@@ -10,10 +10,6 @@ gui/server.py — FastAPI loopback UI for scan queue/status.
 
 This is a small command center to show queued scans, start jobs and display
 status pages. It's not hardened for the internet — intentionally loopback-only.
-
-# NOTE TO FUTURE-ME: This UI is for my convenience and mild vanity.
-# If a colleague reads this and giggles at my TODOs, let them laugh.
-# If the server gets weird, check if I edited things at 02:47.
 """
 
 from __future__ import annotations
