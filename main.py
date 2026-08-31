@@ -169,9 +169,8 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:
         log.info("Interrupted by operator.")
         return 130
-    except Exception as exc:
-        # top-level safety net: detailed traces are in module logs, keep CLI tidy
-        log.critical("Fatal dispatcher error: %s", exc)
+    except OSError as exc:
+        log.critical("I/O failure: %s", exc)
         return 1
     return 0
 

@@ -1,14 +1,3 @@
-"""
-evidence.py — Write SHA-256 manifest for artifacts (quick notes).
-
-Produce a simple MANIFEST.sha256.json listing each artifact's hash so I can
-prove files weren't altered after capture.
-
-TODO:
-- Maybe add an optional GPG signing step if I need stronger chain-of-custody.
-- Emit machine-readable error codes for the UI.
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -29,8 +18,7 @@ def sha256_file(path: str) -> Optional[str]:
             for chunk in iter(lambda: fh.read(65536), b""):
                 h.update(chunk)
         return h.hexdigest()
-    except Exception as exc:
-        # can't read/hash the file — warn and continue, useful for flaky FS mounts
+    except OSError as exc:
         log.warning("Could not hash %s: %s", path, exc)
         return None
 
@@ -64,7 +52,6 @@ def write_manifest(out_dir: str, target_url: str, timestamp_utc: str,
             json.dump(manifest, fh, indent=2)
         log.info("Evidence manifest written: %s (%d file(s)).", path, len(hashes))
         return path
-    except Exception as exc:
-        # TODO: surface this to the operator UI instead of just logging
+    except OSError as exc:
         log.error("Failed to write evidence manifest: %s", exc)
         return None

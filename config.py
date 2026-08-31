@@ -54,11 +54,6 @@ NAV_RETRY_SETTLE_MS: Final[int] = 45_000
 # Full-page copies (DOM + request log) kept here for training/regression use.
 SITE_ARCHIVE_DIR: Final[str] = "artifacts/site_archive"
 
-# LAST-resort ingestion: fetch a remote target WITHOUT Tor if every Tor-routed
-# attempt failed. This EXPOSES THE OPERATOR'S REAL IP TO THE TARGET — flip to
-# False to keep the anonymity guarantee absolute.
-ALLOW_NON_TOR_FALLBACK: Final[bool] = True
-
 # A benign, common desktop UA. We're passive observers — this isn't to evade
 # detection, just to receive the same DOM a normal visitor would.
 USER_AGENT: Final[str] = (
@@ -209,8 +204,6 @@ CAMPAIGN_INHERIT_CAP: Final[int] = 25
 # --------------------------------------------------------------------------
 # Phase 4 — Localhost GUI
 # --------------------------------------------------------------------------
-# Bound to loopback ONLY. Exposing this command-center to a network would be a
-# self-inflicted vulnerability — do not change the host to 0.0.0.0.
 GUI_HOST: Final[str] = "127.0.0.1"
 GUI_PORT: Final[int] = 8077
 

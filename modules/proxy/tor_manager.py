@@ -192,7 +192,16 @@ def _ensure_exit_ip_found(exit_ip: Optional[str]) -> None:
         )
 
 
-def _ensure_no_ip_leak(host_ip: Optional[str], exit_ip: str) -> None:
+def _ensure_host_ip_found(host_ip: Optional[str]) -> str:
+    if not host_ip:
+        raise AnonymityError(
+            "Could not determine the host IP — refusing to scan because "
+            "anonymity cannot be verified."
+        )
+    return host_ip
+
+
+def _ensure_no_ip_leak(host_ip: str, exit_ip: str) -> None:
     """The core fail-safe: if exit IP equals host IP, Tor isn't carrying traffic. Halt."""
     if host_ip is not None and exit_ip == host_ip:
         raise AnonymityError(
@@ -201,15 +210,11 @@ def _ensure_no_ip_leak(host_ip: Optional[str], exit_ip: str) -> None:
         )
 
 
-def _build_identity(host_ip: Optional[str], exit_ip: str, renewed: bool) -> ProxyIdentity:
-    """Package the verified IPs into a ProxyIdentity, conservative about 'anonymous'."""
-    # If we couldn't discover the host IP, be conservative: assume the
-    # exit is anonymous unless it explicitly matches a discovered host IP.
-    is_anon: bool = host_ip is None or exit_ip != host_ip
+def _build_identity(host_ip: str, exit_ip: str, renewed: bool) -> ProxyIdentity:
     return ProxyIdentity(
-        host_ip=host_ip or "unknown",
+        host_ip=host_ip,
         exit_ip=exit_ip,
-        is_anonymous=bool(is_anon),
+        is_anonymous=True,
         circuit_renewed=renewed,
     )
 
@@ -231,24 +236,19 @@ async def acquire_anonymous_identity(target_url: StrictStr) -> ProxyIdentity:
         host_ip: Optional[str] = await _discover_host_ip()
         exit_ip: Optional[str] = await _discover_exit_ip(client)
 
-        # If we could not determine an exit IP over Tor, anonymity is unproven.
-        # Treat missing exit IP as a fatal condition to avoid blind scans.
         _ensure_exit_ip_found(exit_ip)
-        assert exit_ip is not None  # narrowed by the check above, for type checkers
+        assert exit_ip is not None
+        host_ip = _ensure_host_ip_found(host_ip)
 
         _ensure_no_ip_leak(host_ip, exit_ip)
 
         identity: ProxyIdentity = _build_identity(host_ip, exit_ip, renewed)
         log.info("Anonymity confirmed. Exit IP: %s (host: %s)",
-                  exit_ip, host_ip or "unknown")
+                  exit_ip, host_ip)
         return identity
-    except AnonymityError:
-        raise  # Propagate fail-closed conditions untouched.
-    except Exception as exc:
-        # Any unexpected error in the safety layer is treated as a leak risk.
-        raise AnonymityError(f"Anonymity verification failed unexpectedly: {exc}")
     finally:
-        # Active cleanup and memory safety: always close the probe client.
-        with contextlib.suppress(Exception):
+        try:
             await client.aclose()
+        except httpx.HTTPError as exc:
+            log.warning("Could not close anonymity-check client: %s", exc)
         log.info("Executing cleanup protocols for acquire_anonymous_identity.")

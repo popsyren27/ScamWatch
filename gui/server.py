@@ -15,7 +15,6 @@ status pages. It's not hardened for the internet — intentionally loopback-only
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import uuid
 from pathlib import Path
 from typing import Optional
@@ -91,8 +90,7 @@ async def _run_job(job_id: str, url: str, direct: bool) -> None:
         report: ScanReport = await run_scan(
             url, status_hook=_make_status_hook(job_id), direct=direct
         )
-    except Exception as exc:
-        # Catch-all on purpose — a crashed worker still owes the UI a status.
+    except (OSError, ValueError) as exc:
         _record_failure(job_id, exc)
         return
 
@@ -164,9 +162,7 @@ def serve() -> None:
         "Starting command center on http://%s:%s (loopback only).",
         GUI_HOST, GUI_PORT,
     )
-    # If uvicorn dies here, it's not on me. Probably.
-    with contextlib.suppress(KeyboardInterrupt):
-        uvicorn.run(app, host=GUI_HOST, port=GUI_PORT, log_level="info")
+    uvicorn.run(app, host=GUI_HOST, port=GUI_PORT, log_level="info")
 
 
 # If you've made it this far and think exposing this to the internet is a fine

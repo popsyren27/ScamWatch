@@ -1,18 +1,3 @@
-"""
-launch.py — Simple launcher for local development / Tor orchestration.
-
-My notes:
-- Finds and starts Tor (tries common locations). Waits for bootstrap.
-- Launches `main.py` and optionally opens the GUI in the browser.
-
-To-do if I revisit this:
-- Add configurable timeouts and clearer error codes when Tor fails.
-
-Known annoyances:
-- Tor output parsing is fragile on some Windows installs; if startup hangs
-    check the printed Tor lines.
-"""
-
 from __future__ import annotations
 
 import os
@@ -24,25 +9,17 @@ import threading
 import time
 import webbrowser
 
-# Reuse the single source of truth for ports so the launcher never drifts from
-# the app's configuration.
-try:
-    from config import GUI_HOST, GUI_PORT, TOR_SOCKS_HOST, TOR_SOCKS_PORT
-except Exception as exc:
-    print(f"[!] Could not import config.py ({exc}) — using built-in defaults.")
-    GUI_HOST, GUI_PORT = "127.0.0.1", 8077
-    TOR_SOCKS_HOST, TOR_SOCKS_PORT = "127.0.0.1", 9050
+from config import GUI_HOST, GUI_PORT, TOR_SOCKS_HOST, TOR_SOCKS_PORT
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 TORRC = os.path.join(ROOT, "torrc")
-BOOTSTRAP_TIMEOUT = 90  # seconds to allow Tor to build its first circuit
+BOOTSTRAP_TIMEOUT = 90
 
 
 # --------------------------------------------------------------------------
 # Helpers
 # --------------------------------------------------------------------------
 def _find_tor() -> str | None:
-    """Locate a Tor binary across the usual Windows/macOS/Linux install spots."""
     found = shutil.which("tor")
     if found:
         return found
@@ -61,7 +38,6 @@ def _find_tor() -> str | None:
 
 
 def _port_open(host: str, port: int, timeout: float = 1.0) -> bool:
-    """True if something is already accepting connections on host:port."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.settimeout(timeout)
         return sock.connect_ex((host, port)) == 0
@@ -78,7 +54,6 @@ def _install_hint() -> None:
 
 
 def _start_tor(tor_path: str) -> subprocess.Popen | None:
-    """Start `tor -f torrc` and block until bootstrapped (or timeout)."""
     cmd = [tor_path]
     if os.path.exists(TORRC):
         cmd += ["-f", TORRC]
@@ -102,39 +77,36 @@ def _start_tor(tor_path: str) -> subprocess.Popen | None:
         if any(tag in line for tag in ("Bootstrapped", "[warn]", "[err]", "[notice] Opening")):
             print(f"  [tor] {line}")
         if "Bootstrapped 100%" in line:
-            # keep draining stdout in the background so Tor's pipe never blocks
             threading.Thread(target=_drain, args=(proc,), daemon=True).start()
             return proc
     print("[!] Tor did not finish bootstrapping within the timeout.")
-    return proc  # return it anyway so we can clean it up
+    return proc
 
 
 def _drain(proc: subprocess.Popen) -> None:
-    """Consume (and surface warnings from) Tor's ongoing output."""
     try:
         for line in proc.stdout:  # type: ignore[union-attr]
             if "[warn]" in line or "[err]" in line:
                 print(f"  [tor] {line.strip()}")
-    except Exception:
-        pass  # best-effort drain: ignore any read errors from the Tor pipe
+    except OSError:
+        return
 
 
 def _force_kill(proc: subprocess.Popen) -> None:
     try:
         proc.kill()
-    except Exception:
-        pass  # process may have already exited
+    except ProcessLookupError:
+        return
 
 
 def _stop(proc: subprocess.Popen | None, name: str) -> None:
-    """Terminate a child process gracefully, then forcefully if needed."""
     if proc is None or proc.poll() is not None:
         return
     print(f"[*] Stopping {name}...")
     try:
         proc.terminate()
         proc.wait(timeout=10)
-    except Exception:
+    except subprocess.TimeoutExpired:
         _force_kill(proc)
 
 
@@ -147,7 +119,7 @@ def main() -> int:
     if skip_tor:
         args.remove("--skip-tor")
     if not args:
-        args = ["gui"]  # default action
+        args = ["gui"]
     is_gui = args[0] == "gui"
 
     print("=" * 64)
@@ -158,7 +130,6 @@ def main() -> int:
     app: subprocess.Popen | None = None
 
     try:
-        # ---- Tor ----------------------------------------------------------
         if skip_tor:
             print("[*] --skip-tor: not managing Tor (local/offline mode).")
         elif _port_open(TOR_SOCKS_HOST, TOR_SOCKS_PORT):
@@ -172,11 +143,9 @@ def main() -> int:
             if not _port_open(TOR_SOCKS_HOST, TOR_SOCKS_PORT):
                 print("[!] SOCKS port still not reachable; remote scans may fail.")
 
-        # ---- App ----------------------------------------------------------
         url = f"http://{GUI_HOST}:{GUI_PORT}"
         if is_gui:
             print(f"[*] Launching command center -> {url}")
-            # open the browser shortly after the server has had time to bind
             threading.Timer(2.0, lambda: _safe_open(url)).start()
         else:
             print(f"[*] Running: main.py {' '.join(args)}")
@@ -189,7 +158,6 @@ def main() -> int:
         print("\n[*] Interrupted — shutting down.")
         return 130
     finally:
-        # stop the app first, then Tor (whether we started it or it lingered)
         _stop(app, "app")
         _stop(tor_proc, "Tor")
 
@@ -197,8 +165,8 @@ def main() -> int:
 def _safe_open(url: str) -> None:
     try:
         webbrowser.open(url)
-    except Exception:
-        pass  # opening the browser is a UX nicety only
+    except webbrowser.Error:
+        return
 
 
 if __name__ == "__main__":

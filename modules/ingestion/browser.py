@@ -19,7 +19,7 @@ from typing import Any, Optional
 from pydantic import StrictStr, validate_call
 
 from config import (
-    ALLOW_NON_TOR_FALLBACK, ARTIFACT_DIR, NAV_RETRY_SETTLE_MS,
+    ARTIFACT_DIR, NAV_RETRY_SETTLE_MS,
     NAV_RETRY_TIMEOUT_MS, NAV_TIMEOUT_MS, PAGE_TIMEOUT_MS, SITE_ARCHIVE_DIR,
     TOR_PROXY_URL, USER_AGENT,
 )
@@ -313,7 +313,7 @@ async def _render_with_playwright(target_url: str, direct: bool) -> IngestedPage
             if (static_page.dom_html or "").strip():
                 _archive_page(target_url, static_page.dom_html, [], static_page.http_status)
                 return static_page
-            raise RuntimeError("static fetch over Tor returned no content")
+            return static_page
 
         bundle = await _extract_rendered_bundle(page, response, target_url,
                                                 network_requests, shot_path,
@@ -339,54 +339,20 @@ async def _render_with_playwright(target_url: str, direct: bool) -> IngestedPage
 
         _archive_page(target_url, bundle.dom_html, network_requests, bundle.http_status)
         return bundle
-    except Exception as exc:
-        log.error("browser ingestion failed for %s: %s", target_url, exc)
-        try:
-            return await _fallback_httpx_fetch(target_url, direct=direct)
-        except Exception as fallback_exc:
-            log.error("fallback fetch also failed for %s: %s", target_url, fallback_exc)
-            return IngestedPage(final_url=target_url, http_status=0, rendered=False)
     finally:
         await _teardown_playwright(playwright, browser, context)
 
 
 @validate_call
 async def ingest_target(target_url: StrictStr, direct: bool = False) -> IngestedPage:
-    """Render target_url into an IngestedPage via the longest usable path.
-
-    Ladder: browser render -> slow browser render -> static fetch over Tor ->
-    (optionally, config-gated) static fetch WITHOUT Tor. direct=True is only
-    used by the pipeline for loopback targets.
-    """
     try:
-        import playwright.async_api  # noqa: F401
+        from playwright.async_api import Error as PlaywrightError
     except ImportError:
         log.warning("Playwright not installed, using static httpx fallback")
-        try:
-            return await _fallback_httpx_fetch(target_url, direct=direct)
-        except Exception as exc:
-            log.error("fallback fetch failed for %s: %s", target_url, exc)
-            return IngestedPage(final_url=target_url, http_status=0, dom_html="", rendered=False)
+        return await _fallback_httpx_fetch(target_url, direct=direct)
 
     try:
         return await _render_with_playwright(target_url, direct)
-    except Exception as exc:
-        log.error("all Tor-routed ingestion attempts failed for %s: %s", target_url, exc)
-
-    if direct:
-        return IngestedPage(final_url=target_url, http_status=0, dom_html="", rendered=False)
-
-    if not ALLOW_NON_TOR_FALLBACK:
-        log.error("Non-Tor fallback disabled by config — giving up on %s.", target_url)
-        return IngestedPage(final_url=target_url, http_status=0, dom_html="", rendered=False)
-
-    # LAST RESORT: this contacts the target from the operator's real IP.
-    log.warning("FALLBACK TO NON-ANONYMOUS FETCH for %s — operator IP is exposed "
-                "to the target. Disable via ALLOW_NON_TOR_FALLBACK=False.", target_url)
-    try:
-        page = await _fallback_httpx_fetch(target_url, direct=True)
-        _archive_page(target_url, page.dom_html, [], page.http_status)
-        return page
-    except Exception as exc:
-        log.error("non-Tor fallback also failed for %s: %s", target_url, exc)
-        return IngestedPage(final_url=target_url, http_status=0, dom_html="", rendered=False)
+    except (PlaywrightError, OSError) as exc:
+        log.warning("Browser ingestion failed for %s: %s; using static fetch.", target_url, exc)
+        return await _fallback_httpx_fetch(target_url, direct=direct)
