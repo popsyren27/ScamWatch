@@ -4,7 +4,6 @@ browser.py — Ingest page content (my dev notes).
 Uses Playwright headless Chromium over Tor to capture DOM, requests and a
 screenshot. Falls back to a plain httpx fetch if Playwright is missing.
 
-TODO: tweak timeouts if pages with huge JS loads keep timing out on slow circuits.
 Playwright is annoying to install on some CI images — that's what the fallback is for.
 """
 

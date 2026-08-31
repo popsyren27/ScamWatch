@@ -41,13 +41,15 @@ TOR_NEWNYM_SETTLE_SECONDS: Final[float] = 5.0
 # --------------------------------------------------------------------------
 # Hard ceiling per page interaction — defends against tarpits and infinite
 # redirect chains designed to hang scanners.
-PAGE_TIMEOUT_MS: Final[int] = 15_000
-NAV_TIMEOUT_MS: Final[int] = 15_000
+# Increased for slow Tor circuits + heavy JS payloads (common on scam pages).
+PAGE_TIMEOUT_MS: Final[int] = 45_000
+NAV_TIMEOUT_MS: Final[int] = 45_000
 
 # Second-chance render for slow sites (Tor circuits are slow): a much longer
 # navigation timeout plus extra idle wait before giving up on the browser.
-NAV_RETRY_TIMEOUT_MS: Final[int] = 60_000
-NAV_RETRY_SETTLE_MS: Final[int] = 20_000
+# Generous budgets for huge JS bundles on slow circuits.
+NAV_RETRY_TIMEOUT_MS: Final[int] = 120_000
+NAV_RETRY_SETTLE_MS: Final[int] = 45_000
 
 # Full-page copies (DOM + request log) kept here for training/regression use.
 SITE_ARCHIVE_DIR: Final[str] = "artifacts/site_archive"

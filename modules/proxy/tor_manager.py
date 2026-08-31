@@ -4,13 +4,10 @@ tor_manager.py — Tor and anonymity checks (personal notes).
 High level: rotate circuits and verify the exit IP is not my host IP. If it
 looks like traffic is leaking, abort the scan — that's the whole point.
 
-Quick reminders / TODOs:
-- NEWNYM via stem when available; keep leak check strict.
-- If I see repeated stem auth failures, re-check Tor control port credentials.
+Quick reminders:
+- NEWNYM via stem is implemented in renew_circuit(); leak check stays strict.
+- Repeated stem auth failures → re-check Tor control port credentials.
 """
-
-# NOTE TO FUTURE-ME: Tor is magical but temperamental. If you see traffic leak,
-# it probably means Tor or my code is sad — both fixable with patience and tea.
 
 from __future__ import annotations
 
@@ -34,6 +31,10 @@ from models import ProxyIdentity
 from modules.logging_setup import get_logger
 
 log = get_logger("proxy.tor")
+
+# Track consecutive stem auth failures to surface credential issues early.
+_consecutive_auth_failures: int = 0
+_MAX_AUTH_FAILURES_BEFORE_WARNING = 3
 
 
 class AnonymityError(RuntimeError):
