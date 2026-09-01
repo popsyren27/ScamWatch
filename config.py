@@ -8,6 +8,7 @@ TODO:
 - Consider splitting local dev overrides into a `config_local.py` ignored by VCS.
 """
 
+import os
 from typing import Dict, Final, Tuple
 
 # --------------------------------------------------------------------------
@@ -204,8 +205,14 @@ CAMPAIGN_INHERIT_CAP: Final[int] = 25
 # --------------------------------------------------------------------------
 # Phase 4 — Localhost GUI
 # --------------------------------------------------------------------------
-GUI_HOST: Final[str] = "127.0.0.1"
-GUI_PORT: Final[int] = 8077
+GUI_HOST: Final[str] = os.environ.get("SCAMWATCH_GUI_HOST", "127.0.0.1")
+GUI_PORT: Final[int] = int(os.environ.get("SCAMWATCH_GUI_PORT", "8077"))
+GUI_USERNAME: Final[str] = os.environ.get("SCAMWATCH_GUI_USERNAME", "")
+GUI_PASSWORD: Final[str] = os.environ.get("SCAMWATCH_GUI_PASSWORD", "")
+GUI_MAX_CONCURRENT_SCANS: Final[int] = int(
+    os.environ.get("SCAMWATCH_GUI_MAX_CONCURRENT_SCANS", "2")
+)
+GUI_MAX_QUEUE: Final[int] = int(os.environ.get("SCAMWATCH_GUI_MAX_QUEUE", "20"))
 
 # --------------------------------------------------------------------------
 # General networking
