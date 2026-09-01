@@ -20,3 +20,38 @@ def test_remote_browser_failure_keeps_static_fetch_on_tor(monkeypatch):
 
     assert page.http_status == 200
     assert calls == [("https://example.test", False)]
+
+
+def test_loopback_browser_failure_keeps_static_fetch_direct(monkeypatch):
+    calls = []
+
+    async def fail_render(url, direct):
+        raise OSError("browser unavailable")
+
+    async def fetch(url, direct):
+        calls.append((url, direct))
+        return browser.IngestedPage(final_url=url, http_status=200)
+
+    monkeypatch.setattr(browser, "_render_with_playwright", fail_render)
+    monkeypatch.setattr(browser, "_fallback_httpx_fetch", fetch)
+
+    page = asyncio.run(browser.ingest_target("http://127.0.0.1:8080", direct=True))
+
+    assert page.http_status == 200
+    assert calls == [("http://127.0.0.1:8080", True)]
+
+
+def test_ingestion_rejects_non_http_url():
+    try:
+        asyncio.run(browser.ingest_target("file:///tmp/evidence.html"))
+    except ValueError as error:
+        assert "http or https" in str(error)
+    else:
+        raise AssertionError("ingest_target accepted a file URL")
+
+
+def test_capture_names_do_not_collide():
+    first = browser._capture_name("https://example.test/login")
+    second = browser._capture_name("https://example.test/login")
+
+    assert first != second
