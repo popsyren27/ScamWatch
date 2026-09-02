@@ -123,13 +123,10 @@ async def _discover_exit_ip(client: httpx.AsyncClient) -> Optional[str]:
 
 async def _authenticate_tor_controller(controller: "object") -> None:
     """Log in to the Tor control port, password if we have one, cookie auth otherwise."""
-    global _consecutive_auth_failures
     if TOR_CONTROL_PASSWORD:
         controller.authenticate(password=TOR_CONTROL_PASSWORD)
     else:
         controller.authenticate()
-    # Reset on successful auth
-    _consecutive_auth_failures = 0
 
 
 async def renew_circuit() -> bool:
@@ -163,16 +160,6 @@ async def renew_circuit() -> bool:
         return False
     except Exception as exc:
         # Why: control-port auth issues are common; degrade rather than abort.
-        # Track consecutive auth failures to surface credential problems.
-        global _consecutive_auth_failures
-        if "auth" in str(exc).lower() or "password" in str(exc).lower() or "cookie" in str(exc).lower():
-            _consecutive_auth_failures += 1
-            if _consecutive_auth_failures >= _MAX_AUTH_FAILURES_BEFORE_WARNING:
-                log.error("Repeated Tor control-port auth failures (%d) — "
-                          "check TOR_CONTROL_PASSWORD / cookie auth in torrc.",
-                          _consecutive_auth_failures)
-        else:
-            _consecutive_auth_failures = 0  # reset on non-auth errors
         log.warning("Circuit renewal failed: %s", exc)
         return False
     finally:
